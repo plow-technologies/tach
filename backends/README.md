@@ -1,8 +1,6 @@
 plow-haskell-skeleton
 =====================
 
-
-# V0.1.0
 A skeleton project for haskell libraries... separation of concerns etc
 
 
