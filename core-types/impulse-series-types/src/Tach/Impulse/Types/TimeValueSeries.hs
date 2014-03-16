@@ -29,19 +29,3 @@ type TVSDoubleType = TimeValueSeries (Vector Double)
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
