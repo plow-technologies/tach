@@ -23,6 +23,7 @@ Change Log
 *Change History* 
 
 + 0.1.1
-
+  Adding Typeable and Generic instances to everything,
+  making sure we have everything to create SafeCopy
 + 0.1.0
   Initial creation

@@ -1,5 +1,5 @@
 Name:                   tach-impulse-series-types
-Version:                0.1.0
+Version:                0.1.1.1
 Author:                 Scott Murphy <scottmurphy09@gmail.com>
 Maintainer:             Scott Murphy <scottmurphy09@gmail.com>
 License:                BSD3
@@ -22,14 +22,14 @@ Library
   Other-Modules:        Tach.Impulse.Types.Internal
   Build-Depends:        base >= 4 && < 5
                       , binary == 0.7.1.0
-                      , thyme == 0.3.1.1
+--                      , thyme == 0.3.1.1
                       , vector == 0.10.9.1
 
 Test-Suite spec         
   Type:                 exitcode-stdio-1.0
   Default-Language:     Haskell2010
   Hs-Source-Dirs:       src
-                      , test
+                      , test                       
   Ghc-Options:          -Wall
   Main-Is:              Spec.hs
   Build-Depends:        base
