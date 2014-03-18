@@ -1,5 +1,5 @@
-Name:                   tach-wavelet-types
-Version:                0.1.0
+Name:                   transformable-types
+Version:                0.0.0
 Author:                 Scott Murphy <scottmurphy09@gmail.com>
 Maintainer:             Scott Murphy <scottmurphy09@gmail.com>
 License:                BSD3
@@ -13,13 +13,14 @@ Library
   Default-Language:     Haskell2010
   HS-Source-Dirs:       src
   GHC-Options:          -Wall
-  Exposed-Modules:      Tach.Wavelet.Types
-  Other-Modules:        Tach.Wavelet.Types.Internal
+  Exposed-Modules:      Tach.Transformable.Types
+                        Tach.Transformable.Types.Transformw
+  Other-Modules:        Tach.Transformable.Types.Internal
+
   Build-Depends:        base >= 4 && < 5
                       , tach-impulse-series-types == 0.1.0
-                      , template-haskell
-                      , wavelets == 0.1.3
-                      , vector == 0.10.9.1
+
+
 Test-Suite spec
   Type:                 exitcode-stdio-1.0
   Default-Language:     Haskell2010
