@@ -25,7 +25,12 @@ newtype TimeValueSeriesStore = TimeValueSeriesStore { unTimeValueSeriesStore :: 
     deriving (Typeable,Generic)
 
 
+
 $(deriveSafeCopy 0 'base ''TVSimple) 
 $(deriveSafeCopy 0 'base ''TimeValueStore) 
-$(deriveSafeCopy 0 'base ''StorableSeries)
+$(deriveSafeCopy 0 'base ''ImpulseSeries)
+$(deriveSafeCopy 0 'base ''ImpulseRep)
+$(deriveSafeCopy 0 'base ''ImpulseStart)
+$(deriveSafeCopy 0 'base ''ImpulseEnd)
+$(deriveSafeCopy 0 'base ''ImpulsePeriod)
 $(deriveSafeCopy 0 'base ''TimeValueSeriesStore)

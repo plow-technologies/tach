@@ -41,5 +41,5 @@ instance Functor (ImpulseSeries isp st en ) where
     fmap f (ImpulseSeries a b c r) = ImpulseSeries a b c (f r)
 
 
-data ImpulsePeriod  a b = IPeriodConst b | IPeriodParameterized (a -> b)
+data ImpulsePeriod   a b = IPeriodConst b | IPeriodParameterized  a 
                           deriving (Generic,Typeable) 
