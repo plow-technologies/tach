@@ -11,3 +11,8 @@ import Tach.Impulse.Types.Impulse
 type TVTypeOfTime = NominalDiffTime
 type TVPeriod  = ImpulsePeriod  TVTypeOfTime TVTypeOfTime 
 
+data TVSimple = TVSimple{
+  tvSimpleTime  :: UTCTime
+ ,tvSimpleValue :: Double
+ ,tvSimpleId    :: Int 
+}
