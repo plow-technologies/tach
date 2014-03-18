@@ -23,7 +23,7 @@ data ImpulseSeries isp st en rep = ImpulseSeries {
       impulseSeriesStart  :: st , 
       impulseSeriesEnd    :: en ,
       impulseSeriesRep    :: rep 
-} deriving (Generic,Typeable)
+} deriving (Generic,Typeable,Ord,Eq)
 
 -- | some standard newtype helpers for defining isp, rep st en
 
