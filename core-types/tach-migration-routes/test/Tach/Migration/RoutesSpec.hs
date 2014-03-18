@@ -11,15 +11,12 @@ main = hspec spec
 
 spec :: Spec
 spec = do
-  yesodSpecWithSiteGenerator getSiteAction test
+  yesodSpecWithSiteGenerator (return HelloWorld) test
 
-test :: YesodSpec Application
+-- test :: YesodSpec Application
 test = ydescribe "Main api" $ do
   yit "Should return 4" $ do
     post ReceiveTimeSeriesR
     bodyEquals "4"
-
-getSiteAction :: IO Application
-getSiteAction = undefined -- toWaiApp HelloWorld
 
 
