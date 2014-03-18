@@ -16,9 +16,10 @@ Library
   Exposed-Modules:      Tach.Migration.Acidic
   Other-Modules:        Tach.Migration.Acidic.Internal
   Build-Depends:        base >= 4 && < 5
-                      , acid-state               == 0.12.1
-                      , safecopy                 == 0.8.3.7569
+                      , acid-state                == 0.12.1
+                      , safecopy                  == 0.8.3.7569
                       , tach-impulse-series-types == 0.1.2
+                      , containers == 0.5.0.0
 
 Test-Suite spec
   Type:                 exitcode-stdio-1.0
