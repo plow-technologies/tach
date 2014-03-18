@@ -19,7 +19,7 @@ The series start value ('st) and end value ('en) are there to be used to identif
 |-}
 
 
-data ImpulseSeries isp st en rep = ImpulseSeries{ 
+data ImpulseSeries isp st en rep = ImpulseSeries { 
       impulseSeriesPeriod :: isp, 
       impulseSeriesStart  :: st , 
       impulseSeriesEnd    :: en ,

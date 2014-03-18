@@ -32,3 +32,4 @@ type WavletValueSeries = ImpulseSeries TVSPeriod TVSStart TVSEnd (ImpulseRep Tac
 
 
 
+
