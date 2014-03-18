@@ -1,0 +1,40 @@
+Name:                   tach-impulse-series-types
+Version:                0.1.0
+Author:                 Scott Murphy <scottmurphy09@gmail.com>
+Maintainer:             Scott Murphy <scottmurphy09@gmail.com>
+License:                BSD3
+License-File:           LICENSE
+Synopsis:               Base Types for Tach impulse series
+Description:            
+  Impulse series are A-periodic sequences of values indexed over some time representation.  
+  This is the base type around which all the TSDB entities in Tach are designed
+Cabal-Version:          >= 1.10
+Build-Type:             Simple
+
+Library
+  Default-Language:     Haskell2010
+  HS-Source-Dirs:       src
+  GHC-Options:          -Wall
+  Exposed-Modules:      Tach.Impulse.Types
+                        Tach.Impulse.Types.Impulse
+                        Tach.Impulse.Types.TimeValueSeries
+                        Tach.Impulse.Types.TimeValue
+  Other-Modules:        Tach.Impulse.Types.Internal
+  Build-Depends:        base >= 4 && < 5
+                      , binary == 0.7.1.0
+                      , thyme == 0.3.1.1
+                      , vector == 0.10.9.1
+
+Test-Suite spec         
+  Type:                 exitcode-stdio-1.0
+  Default-Language:     Haskell2010
+  Hs-Source-Dirs:       src
+                      , test
+  Ghc-Options:          -Wall
+  Main-Is:              Spec.hs
+  Build-Depends:        base
+                      , hspec
+
+Source-Repository head
+  Type:                 git
+  Location:             https://github.com/plow-technologies/tach.git
