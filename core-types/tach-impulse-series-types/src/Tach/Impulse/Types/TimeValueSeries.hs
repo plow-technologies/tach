@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings, DeriveGeneric, DeriveDataTypeable #-}
 module Tach.Impulse.Types.TimeValueSeries where 
 
-import Data.Thyme -- A faster time library 
+
 import Tach.Impulse.Types.Impulse
 import Tach.Impulse.Types.TimeValue
 import Data.Vector

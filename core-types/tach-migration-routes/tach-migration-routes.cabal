@@ -17,9 +17,12 @@ Library
   Other-Modules:        Tach.Migration.Routes.Internal
   Build-Depends:        base >= 4 && < 5
                       , yesod == 1.2.5
-                      , tach-impulse-series-types == 0.1.2
+                      , tach-impulse-series-types == 0.1.1.1
                       , yesod-core == 1.2.7
                       , aeson == 0.7.0.2
+                      , text == 1.1.0.1
+                      , bytestring == 0.10.0.2
+                      , http-types == 0.8.3
 Test-Suite spec
   Type:                 exitcode-stdio-1.0
   Hs-Source-Dirs:       src
@@ -32,6 +35,11 @@ Test-Suite spec
                       , yesod-test
                       , yesod-core
                       , tach-migration-routes
+                      , tach-impulse-series-types
+                      , text
+                      , aeson
+                      , bytestring
+                      , http-types
 
 Source-Repository head
   Type:                 git

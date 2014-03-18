@@ -3,7 +3,6 @@
 module Tach.Impulse.Types.Impulse where 
 
 import GHC.Generics
-
 import Data.Typeable
 
 
