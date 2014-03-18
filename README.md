@@ -1,37 +1,22 @@
-plow-haskell-skeleton
+plow-tach-DB
 =====================
 
+Plow Tach DB consists of a loose as possible set of modules for
+defining a time series database.
 
-# V0.1.0
-A skeleton project for haskell libraries... separation of concerns etc
+They are then bundled together in different 'app' configurations.
 
+The goal is to provide a framework for time series db creation that works for
+many different projects.
 
-## Purpose
+The project may expand at some future date to include other kinds of databases.
 
-Haskell's cabal is easy to confuse with versions and libraries... often, only a few of the features of a library are needed by any particular other library.
+The project is broken into several different classes of package
 
-A shining example of this is a set of types that are being used as a message passer.  Perhaps one of the libraries they are being passed to is somewhat older.
+# Core Types
 
-Because of haskell's blazing development speed, you quickly find yourself with deps problems.
++ [impulse-series-types] ("./core-types/impulse-series-types/README.md")
++ [impulse-series-classes] ("./core-types/impulse-series-classes/README.md")
++ [wavelet-types] ("./core-types/wavelet-types/README.md")
 
-
-## Preferred method of package generation...
-This is only a skeleton and in each place you will have to make your packages and tests.
-The project generator that is preferred is **hi** using the h-spec template (default as of March 2014)
-
-## Organization and description of concerns
-
-<name>
-├── backends
-├── core-libs
-├── core-types
-├── interface-libs
-├── LICENSE
-├── opts-libs
-└── README.md
-
-
-backends --> <name>-<backend-name> : e.g. persist-mongo
-core-libs --> <name>-core : e.g. onping-permissions-core
-core-types --> <name>-types : e.g. onping-permissions-types
 

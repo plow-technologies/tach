@@ -16,8 +16,10 @@ spec = do
 test :: YesodSpec Application
 test = ydescribe "Main api" $ do
   yit "Should return 4" $ do
-    post "/migration/receive/time-series-data"
+    post ReceiveTimeSeriesR
     bodyEquals "4"
 
 getSiteAction :: IO Application
-getSiteAction = toWaiApp HelloWorld
+getSiteAction = undefined -- toWaiApp HelloWorld
+
+
