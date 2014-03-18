@@ -15,4 +15,4 @@ data TVSimple = TVSimple{
   tvSimpleTime  :: UTCTime
  ,tvSimpleValue :: Double
  ,tvSimpleId    :: Int 
-}
+} deriving (Read, Show, Eq, Generic, Typeable)

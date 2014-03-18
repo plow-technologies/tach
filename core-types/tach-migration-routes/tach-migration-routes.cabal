@@ -16,10 +16,12 @@ Library
   Exposed-Modules:      Tach.Migration.Routes
   Other-Modules:        Tach.Migration.Routes.Internal
   Build-Depends:        base >= 4 && < 5
-                      , yesod
+                      , yesod == 1.2.5
+                      , tach-impulse-series-types == 0.1.2
+                      , yesod-core == 1.2.7
+                      , aeson == 0.7.0.2
 Test-Suite spec
   Type:                 exitcode-stdio-1.0
-  Default-Language:     Haskell2010
   Hs-Source-Dirs:       src
                       , test
   Ghc-Options:          -Wall
@@ -28,6 +30,7 @@ Test-Suite spec
                       , hspec
                       , yesod
                       , yesod-test
+                      , yesod-core
                       , tach-migration-routes
 
 Source-Repository head

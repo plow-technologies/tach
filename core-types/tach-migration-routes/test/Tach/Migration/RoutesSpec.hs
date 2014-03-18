@@ -5,13 +5,14 @@ import Yesod.Test
 import Yesod
 import Tach.Migration.Routes
 import Yesod.Default.Config
+import Tach.Impulse.Types.TimeValue
 
 main :: IO ()
 main = hspec spec
 
 spec :: Spec
 spec = do
-  yesodSpecWithSiteGenerator (return HelloWorld) test
+  yesodSpecWithSiteGenerator (return MigrationRoutes) test
 
 -- test :: YesodSpec Application
 test = ydescribe "Main api" $ do
