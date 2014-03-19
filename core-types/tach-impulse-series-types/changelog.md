@@ -11,16 +11,19 @@ Change Log
 
 *For complete history please view commit log*
 
-##Current Version 0.1.4
+##Current Version 0.1.5
 --------------------------	
 
 
-### Proposed Release 0.1.5
+### Proposed Release 0.1.6
 ----------------------------
 
 
 
 *Change History*
++ 0.1.5
+  * Added a Key field to the impulse series so that I can run NoKey data inside of it
+  
 + 0.1.4
   * version conflict with cabal 0.1.3 so this was made
 + 0.1.3

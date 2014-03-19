@@ -30,7 +30,7 @@ type TVSDoublePeriodicType = TimeValueSeries (Vector Double)
 
 
 -- | TimeValue Standard Type is TVSimple and this is the  impulse version
-type TVSimpleImpulseType = TimeValueSeries (Seq TVSimple)
+type TVSimpleImpulseType = TimeValueSeries (Seq TVNoKey)
 
 
 
