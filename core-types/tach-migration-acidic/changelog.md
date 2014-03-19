@@ -11,11 +11,11 @@ Change Log
 
 *For complete history please view commit log*
 
-##Current Version 
+##Current Version  0.1.1
 --------------------------	
 
 
-### Proposed Release 0.1.1
+### Proposed Release 0.1.2
 ----------------------------
 
 
@@ -23,7 +23,7 @@ Change Log
 *Change History* 
 
 + 0.1.1
-
+  added Key to impulse series
 + 0.1.0
   Initial commit
   a basic framework for acid types
