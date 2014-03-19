@@ -19,12 +19,14 @@ import Data.SafeCopy        ( base, deriveSafeCopy )
 
 
 -- Safe Copy Derivations for types we depend on
+$(deriveSafeCopy 0 'base ''ImpulseKey)
 $(deriveSafeCopy 0 'base ''ImpulseStart)
 $(deriveSafeCopy 0 'base ''ImpulseEnd)
 $(deriveSafeCopy 0 'base ''ImpulseRep)
 $(deriveSafeCopy 0 'base ''TVSimple) 
 $(deriveSafeCopy 0 'base ''ImpulsePeriod)
 $(deriveSafeCopy 0 'base ''ImpulseSeries)
+
 
 -- Our Safecopy instance
 $(deriveSafeCopy 0 'base ''TVSimpleImpulseTypeStore) 

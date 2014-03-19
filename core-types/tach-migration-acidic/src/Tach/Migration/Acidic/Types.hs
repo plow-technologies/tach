@@ -18,9 +18,11 @@ import GHC.Generics
 -- | The Acid State instance of anything is that thing suffixed with Store... 'TimeValue' -> 'TimeValueStore'
 -- This prevents confusion later 
 
+
+
 -- | This is a simple impulse valued sequence.  No Compression, No structural change.
 -- Note, the terrible type signature occurs because safecopy hates type synonyms!
-newtype TVSimpleImpulseTypeStore = TVSimpleImpulseTypeStore { unTimeValueStore :: (ImpulseSeries (ImpulsePeriod (Vector Double) Integer ) (ImpulseStart Integer) (ImpulseEnd Integer) (ImpulseRep (Seq TVSimple))) } deriving (Typeable,Generic)
+newtype TVSimpleImpulseTypeStore = TVSimpleImpulseTypeStore { unTimeValueStore :: (ImpulseSeries (ImpulseKey Integer) (ImpulsePeriod (Vector Double) Integer ) (ImpulseStart Integer) (ImpulseEnd Integer) (ImpulseRep (Seq TVSimple))) } deriving (Typeable,Generic)
 
 
 -- | The ByteString is the filename used to grab the correct TVSimple... Allowing for TS level locks instead of DB level
