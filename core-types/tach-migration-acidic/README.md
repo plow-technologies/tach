@@ -1,14 +1,14 @@
 # tach-migration-acidic
 
-TODO: Write description here
+tach-migration-acidic holds the core types for the acid framework used in Tach.  The actual functions for it are used in tach-migration-acidic-lib 
 
 ## Installation
 
-TODO: Write installation instructions here
+installation should be done using the hackage server
 
 ## Usage
 
-TODO: Write usage instructions here
+
 
 ## How to run tests
 

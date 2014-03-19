@@ -5,15 +5,16 @@
 module Tach.Migration.Acidic.Types where
 
 import Tach.Impulse.Types.TimeValue 
-import Tach.Impulse.Types.TimeValueSeries 
+-- import Tach.Impulse.Types.TimeValueSeries 
 import Tach.Impulse.Types.Impulse
 import Data.Typeable (Typeable)
 import Data.Sequence
 import Data.IntMap
+import Data.ByteString
 -- import Data.Thyme
 import Data.Vector
 import GHC.Generics
-import Data.SafeCopy        ( base, deriveSafeCopy )
+--import Data.SafeCopy        ( base, deriveSafeCopy )
 -- | The Acid State instance of anything is that thing suffixed with Store... 'TimeValue' -> 'TimeValueStore'
 -- This prevents confusion later 
 
@@ -22,3 +23,10 @@ import Data.SafeCopy        ( base, deriveSafeCopy )
 newtype TVSimpleImpulseTypeStore = TVSimpleImpulseTypeStore { unTimeValueStore :: (ImpulseSeries (ImpulsePeriod (Vector Double) Integer ) (ImpulseStart Integer) (ImpulseEnd Integer) (ImpulseRep (Seq TVSimple))) } deriving (Typeable,Generic)
 
 
+-- | The ByteString is the filename used to grab the correct TVSimple... Allowing for TS level locks instead of DB level
+newtype IntKey = IntKey {unIntKey :: ByteString} 
+    deriving (Eq,Show,Ord,Typeable,Generic)
+
+-- | ImpulseMap maps pid (ints) to the filenames
+newtype ImpulseMap = ImpulseMap { unImpulseMap :: IntMap IntKey}
+   deriving (Eq,Show,Ord,Typeable,Generic)
