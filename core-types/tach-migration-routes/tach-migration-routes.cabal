@@ -1,11 +1,11 @@
 Name:                   tach-migration-routes
-Version:                0.1.0
+Version:                0.1.1
 Author:                 Kevin Cotrone <kevincotrone@gmail.com>
 Maintainer:             Kevin Cotrone <kevincotrone@gmail.com>
 License:                BSD3
 License-File:           LICENSE
--- Synopsis:               
--- Description:            
+Synopsis:               Routes for the migration of data
+Description:            Handles the reuqest for the migration of data and helps share the routes so route names are shared and compiled
 Cabal-Version:          >= 1.10
 Build-Type:             Simple
 
@@ -16,10 +16,15 @@ Library
   Exposed-Modules:      Tach.Migration.Routes
   Other-Modules:        Tach.Migration.Routes.Internal
   Build-Depends:        base >= 4 && < 5
-                      , yesod
+                      , yesod == 1.2.5
+                      , tach-impulse-series-types == 0.1.1.1
+                      , yesod-core == 1.2.7
+                      , aeson == 0.7.0.2
+                      , text == 0.11.3.1
+                      , bytestring == 0.10.0.2
+                      , http-types == 0.8.3
 Test-Suite spec
   Type:                 exitcode-stdio-1.0
-  Default-Language:     Haskell2010
   Hs-Source-Dirs:       src
                       , test
   Ghc-Options:          -Wall
@@ -28,8 +33,14 @@ Test-Suite spec
                       , hspec
                       , yesod
                       , yesod-test
+                      , yesod-core
                       , tach-migration-routes
+                      , tach-impulse-series-types
+                      , text
+                      , aeson
+                      , bytestring
+                      , http-types
 
 Source-Repository head
   Type:                 git
---  Location:             
+  Location:             git@github.com:plow-technologies/tach.git

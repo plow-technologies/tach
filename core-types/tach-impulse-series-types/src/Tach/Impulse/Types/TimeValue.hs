@@ -13,6 +13,7 @@ type TVPeriod  = ImpulsePeriod TVParameterType TVTypeOfTime
 data TVSimple = TVSimple{
   tvSimpleTime  :: Integer
  ,tvSimpleId    :: Int 
+<<<<<<< HEAD
  ,tvSimpleValue :: Double
 } deriving (Show,Generic,Typeable,Ord,Eq)
 
@@ -20,3 +21,6 @@ data TVSimple = TVSimple{
 
 
 
+=======
+} deriving (Show,Generic,Typeable)
+>>>>>>> 1b15174117a0c99b3fc01a24aa989f7e8db97b28
