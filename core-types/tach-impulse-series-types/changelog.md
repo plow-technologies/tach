@@ -11,16 +11,18 @@ Change Log
 
 *For complete history please view commit log*
 
-##Current Version 0.1.3
+##Current Version 0.1.4
 --------------------------	
 
 
-### Proposed Release 0.1.4
+### Proposed Release 0.1.5
 ----------------------------
 
 
 
 *Change History*
++ 0.1.4
+  * version conflict with cabal 0.1.3 so this was made
 + 0.1.3
   * Changed underlying types around to use Sequence for impulsive types
   * Added quick check test for sequence
