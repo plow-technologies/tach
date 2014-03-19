@@ -15,7 +15,7 @@ import Data.Sequence
 -- | The kind of time used for the time value series
 type TVSTypeOfTime = TVTypeOfTime
 type TVSPeriod = TVPeriod
-
+type TVSKey = TVKey
 type TVSStart = ImpulseStart TVSTypeOfTime
 type TVSEnd = ImpulseEnd TVSTypeOfTime
 
