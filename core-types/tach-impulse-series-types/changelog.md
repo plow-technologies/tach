@@ -11,16 +11,19 @@ Change Log
 
 *For complete history please view commit log*
 
-##Current Version 0.1.2
+##Current Version 0.1.3
 --------------------------	
 
 
-### Proposed Release 0.1.3
+### Proposed Release 0.1.4
 ----------------------------
 
 
 
-*Change History* 
+*Change History*
++ 0.1.3
+  * Changed underlying types around to use Sequence for impulsive types
+  * Added quick check test for sequence
 + 0.1.2
   Changed Period to be a set of coefficients or something like that instead of kind *->*
   

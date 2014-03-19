@@ -34,4 +34,6 @@ type TVSimpleImpulseType = TimeValueSeries (Seq TVSimple)
 
 
 
+
+
 -- /Tach/Impulse/Types/
