@@ -7,9 +7,9 @@ License-File:           LICENSE
 Synopsis:               Acid Types for tach
 extra-source-files:     changelog.md
 Description:            
-SafeCopy instances are created for an impulse series, and a map to a bytestring where each impulse series should be stored.
-tach-migration-acidic holds the core types for the acid framework used in Tach.  The actual functions for it are used in tach-migration-acidic-lib 
-Also, this is where the Acidic instances are developed.  Due to the way Acid is set up
+   SafeCopy instances are created for an impulse series, and a map to a bytestring where each impulse series should be stored.
+   tach-migration-acidic holds the core types for the acid framework used in Tach.  The actual functions for it are used in tach-migration-acidic-lib 
+   Also, this is where the Acidic instances are developed.  Due to the way Acid is set up.
 
 Cabal-Version:          >= 1.10
 Build-Type:             Simple
