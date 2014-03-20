@@ -17,18 +17,17 @@ Library
                         Tach.Acid.Impulse.Cruds.Create
   Other-Modules:        Tach.Acid.Impulse.State.Internal
   Build-Depends:        base >= 4 && < 5
-                      , tach-migration-acidic == 0.1.2.2
+                      , tach-migration-acidic     == 0.1.2.2
                       , tach-impulse-series-types == 0.1.5.2
                       , safecopy                  == 0.8.3.7569
-                      , containers == 0.5.0.0
-                      , vector == 0.10.9.1
+                      , containers                == 0.5.0.0
+                      , vector                    == 0.10.9.1
                       , acid-state                == 0.12.1
-                      , safecopy                  == 0.8.3.7569
-                      , mtl == 2.1.2
-                      , system-filepath == 0.4.9
-                      , basic-prelude == 0.3.6.0
-                      , aeson == 0.6.2.0
-                      , lens == 3.10.2
+                      , mtl                       == 2.1.2
+                      , system-filepath           == 0.4.9
+                      , basic-prelude             == 0.3.6.0 
+                      , aeson                     == 0.7.0.2
+                      , lens >= 4 
 
 
 Test-Suite spec
@@ -45,3 +44,6 @@ Test-Suite spec
 Source-Repository head
   Type:                 git
 --  Location:             
+
+
+

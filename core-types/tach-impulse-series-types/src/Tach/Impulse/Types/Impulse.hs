@@ -44,4 +44,5 @@ instance Functor (ImpulseSeries k isp st en ) where
 
 
 data ImpulsePeriod   a b = IPeriodConst b | IPeriodParameterized  a 
-                          deriving (Generic,Typeable) 
+               
+           deriving (Generic,Typeable) 
