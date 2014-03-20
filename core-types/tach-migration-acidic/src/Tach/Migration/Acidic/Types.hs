@@ -22,7 +22,7 @@ import GHC.Generics
 
 -- | This is a simple impulse valued sequence.  No Compression, No structural change.
 -- Note, the terrible type signature occurs because safecopy hates type synonyms!
-newtype TVSimpleImpulseTypeStore = TVSimpleImpulseTypeStore { unTimeValueStore :: (ImpulseSeries (ImpulseKey Integer) (ImpulsePeriod (Vector Double) Integer ) (ImpulseStart Integer) (ImpulseEnd Integer) (ImpulseRep (Seq TVSimple))) } deriving (Typeable,Generic)
+newtype TVSimpleImpulseTypeStore = TVSimpleImpulseTypeStore { unTimeValueStore :: (ImpulseSeries (ImpulseKey Integer) (ImpulsePeriod (Vector Double) Integer ) (ImpulseStart Integer) (ImpulseEnd Integer) (ImpulseRep (Seq TVNoKey))) } deriving (Typeable,Generic)
 
 
 -- | The ByteString is the filename used to grab the correct TVSimple... Allowing for TS level locks instead of DB level

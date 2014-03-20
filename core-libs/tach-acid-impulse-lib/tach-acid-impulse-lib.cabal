@@ -1,5 +1,5 @@
-Name:                   tach-migration-acid-lib
-Version:                0.1.0
+Name:                   tach-acid-impulse-lib
+Version:                0.1.2
 Author:                 Scott Murphy <scottmurphy09@gmail.com>
 Maintainer:             Scott Murphy <scottmurphy09@gmail.com>
 License:                BSD3
@@ -13,14 +13,23 @@ Library
   Default-Language:     Haskell2010
   HS-Source-Dirs:       src
   GHC-Options:          -Wall
-  Exposed-Modules:      Tach.Migration.Acidic.State
-  Other-Modules:        Tach.Migration.Acidic.State.Internal
+  Exposed-Modules:      Tach.Acid.Impulse.State
+                        Tach.Acid.Impulse.Cruds.Create
+  Other-Modules:        Tach.Acid.Impulse.State.Internal
   Build-Depends:        base >= 4 && < 5
-                      , tach-migration-acidic == 0.1.0
-                      , tach-impulse-series-types == 0.1.4
+                      , tach-migration-acidic == 0.1.2.2
+                      , tach-impulse-series-types == 0.1.5.2
                       , safecopy                  == 0.8.3.7569
                       , containers == 0.5.0.0
                       , vector == 0.10.9.1
+                      , acid-state                == 0.12.1
+                      , safecopy                  == 0.8.3.7569
+                      , mtl == 2.1.2
+                      , system-filepath == 0.4.9
+                      , basic-prelude == 0.3.6.0
+                      , aeson == 0.6.2.0
+                      , lens == 3.10.2
+
 
 Test-Suite spec
   Type:                 exitcode-stdio-1.0
@@ -30,6 +39,7 @@ Test-Suite spec
   Ghc-Options:          -Wall
   Main-Is:              Spec.hs
   Build-Depends:        base
+                      , tach-acid-impulse-lib
                       , hspec
 
 Source-Repository head

@@ -31,6 +31,8 @@ $(deriveSafeCopy 0 'base ''ImpulseSeries)
 -- Our Safecopy instance
 $(deriveSafeCopy 0 'base ''TVSimpleImpulseTypeStore) 
 $(deriveSafeCopy 0 'base ''IntKey)
+$(deriveSafeCopy 0 'base ''TVNoKey)
+
 $(deriveSafeCopy 0 'base ''ImpulseMap)
 
 

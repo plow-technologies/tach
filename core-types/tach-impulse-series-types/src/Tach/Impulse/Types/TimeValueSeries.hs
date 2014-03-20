@@ -22,7 +22,7 @@ type TVSEnd = ImpulseEnd TVSTypeOfTime
 
 -- | TimeValueSeries are the generic representations of a series of values in the time domain.
 -- What is meant by 'time domain' and 'value' are left to the specific implementation
-type TimeValueSeries rep = ImpulseSeries TVSPeriod TVSStart TVSEnd (ImpulseRep rep) 
+type TimeValueSeries rep = ImpulseSeries TVSKey TVSPeriod TVSStart TVSEnd (ImpulseRep rep) 
 
 
 -- | TimeValue Standard Type is Double and this is the  periodic version

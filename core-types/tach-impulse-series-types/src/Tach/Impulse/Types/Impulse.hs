@@ -29,7 +29,7 @@ data ImpulseSeries key isp st en rep = ImpulseSeries {
 -- | some standard newtype helpers for defining isp, rep st en
 
 
-newtype ImpulseKey    a = ImpulseKey {unKey :: a} deriving (Generic,Typeable) 
+newtype ImpulseKey    a = ImpulseKey {unKey :: a} deriving (Generic,Typeable,Eq,Ord) --Keys should have both these properties
 newtype ImpulseStart  a = ImpulseStart { unStart ::   a} deriving (Generic,Typeable)  
 newtype ImpulseEnd    a = ImpulseEnd { unEnd ::       a} deriving (Generic,Typeable)   
 newtype ImpulseRep    a = ImpulseRep { unRep ::       a} deriving (Generic,Typeable) 
