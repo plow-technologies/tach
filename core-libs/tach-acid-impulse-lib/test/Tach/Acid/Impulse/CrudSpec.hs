@@ -36,11 +36,11 @@ spec = do
       let key = 1
           impulseStore = buildTestImpulseTypeStore key 0 200 [0..200] (take 200 [0.0,0.2..])
           nKey = TVNoKey 199 1001.3
-      impulseState <- openLocalStateFrom "states/" (impulseStore)
+      impulseState <- openLocalStateFrom "teststates/" (impulseStore)
       update' impulseState (InsertTVSimpleImpulse (buildTestImpulseKey key) nKey)
       eRes <- query' impulseState (GetTVSimpleImpulse (buildTestImpulseKey key) 200)
       closeAcidState impulseState
-      removeDirectoryRecursive "states"
+      removeDirectoryRecursive "teststates"
       case eRes of
         Left a -> expectationFailure $ "Error when accessing key: " ++ (show a)
         Right res -> res `shouldBe` nKey
@@ -50,11 +50,11 @@ spec = do
           impulseStore = buildTestImpulseTypeStore key 0 199 [1..199] (take 199 [0.0,2.0..])
           nKeys = fromList $ buildNoKeys [200..300] (take 100 $ drop 200 [0.0,2.0..])
           eSet = fromList [] :: Set TVNoKey
-      impulseState <- openLocalStateFrom "states/" impulseStore
+      impulseState <- openLocalStateFrom "teststates/" impulseStore
       update' impulseState (InsertManyTVSimpleImpulse (buildTestImpulseKey key) nKeys)
       eRes <- query' impulseState (GetTVSimpleImpulseMany (buildTestImpulseKey key) (ImpulseStart 200) (ImpulseEnd 300))
       closeAcidState impulseState
-      removeDirectoryRecursive "states"
+      removeDirectoryRecursive "teststates"
       case eRes of
         Left a -> expectationFailure $ "Error when accessing key: " ++ (show a)
         Right res -> res `shouldBe` nKeys
@@ -63,11 +63,11 @@ spec = do
       let key = 1
           impulseStore = buildTestImpulseTypeStore key 0 200 [0..200] (take 200 [0.2,0.4..])
           nKey = TVNoKey 0 0.0
-      impulseState <- openLocalStateFrom "states/" (impulseStore)
+      impulseState <- openLocalStateFrom "teststates/" (impulseStore)
       update' impulseState (DeleteTVSimpleImpulse (buildTestImpulseKey key) nKey)
       eRes <- query' impulseState (GetTVSimpleImpulse (buildTestImpulseKey key) 0)
       closeAcidState impulseState
-      removeDirectoryRecursive "states"
+      removeDirectoryRecursive "teststates"
       case eRes of
         Left (ErrorValue ErrorNotFound) -> True `shouldBe` True
         Left a -> expectationFailure $ "Error when accessing key: " ++ (show a)
@@ -77,11 +77,11 @@ spec = do
       let key = 1
           impulseStore = buildTestImpulseTypeStore key 0 200 [0,1..200] (take 200 [0.2,0.4..])
           nKeys = fromList $ buildNoKeys (take 100 [0..200]) (take 100 [0.2,0.4..])
-      impulseState <- openLocalStateFrom "states/" (impulseStore)
+      impulseState <- openLocalStateFrom "teststates/" (impulseStore)
       update' impulseState (DeleteManyTVSimpleImpulse (buildTestImpulseKey key) nKeys)
       eRes <- query' impulseState (GetTVSimpleImpulseMany (buildTestImpulseKey key) (ImpulseStart 0) (ImpulseEnd 300))
       closeAcidState impulseState
-      removeDirectoryRecursive "states"
+      removeDirectoryRecursive "teststates"
       case eRes of
         Left a -> expectationFailure $ "Error when accessing key: " ++ (show a)
         Right res -> (isSubsetOf nKeys res) `shouldBe` False 
