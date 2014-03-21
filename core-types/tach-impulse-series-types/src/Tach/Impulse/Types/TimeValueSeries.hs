@@ -5,7 +5,7 @@ module Tach.Impulse.Types.TimeValueSeries where
 import Tach.Impulse.Types.Impulse
 import Tach.Impulse.Types.TimeValue
 import Data.Vector
-import Data.Sequence
+import Data.Set
 
 {- | Time Value Series are based on the impulse series, and designed to be in the time domain.  
      They may be based on a fixed period or a parameterized one.  
@@ -30,7 +30,7 @@ type TVSDoublePeriodicType = TimeValueSeries (Vector Double)
 
 
 -- | TimeValue Standard Type is TVSimple and this is the  impulse version
-type TVSimpleImpulseType = TimeValueSeries (Seq TVNoKey)
+type TVSimpleImpulseType = TimeValueSeries (Set TVNoKey)
 
 
 

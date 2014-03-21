@@ -12,11 +12,11 @@ import Filesystem.Path
 import CorePrelude
 import Data.Aeson
 -- Containers 
-import Data.Sequence
-import Data.IntMap
+import Data.Set
+--  import Data.IntMap hiding (union, insert)
 import Data.Vector (Vector)
--- import Data.ByteString
 
+import qualified Data.ByteString.Lazy as LB
 -- ACID Specific
 import Control.Monad.Reader ( ask )
 import Control.Monad.State  ( get, put )
@@ -24,12 +24,12 @@ import Data.Acid            ( AcidState, Query, Update, EventResult
                             , makeAcidic,openLocalStateFrom,  closeAcidState )
 -- import Data.Acid.Advanced   ( query', update' )
 -- import Data.Acid.Local      ( createCheckpointAndClose )
--- import Data.SafeCopy        ( base, deriveSafeCopy )
+import Data.SafeCopy        ( base, deriveSafeCopy )
 -- import Data.Typeable (Typeable)
 
 -- Lens Specific 
 import Tach.Acid.Impulse.Lens
-import Control.Lens (over,views)
+import Control.Lens (over,views, (^.) )
 
 -- Impulse Specific 
 -- import Tach.Acid.Impulse.State 
@@ -38,56 +38,76 @@ import Tach.Impulse.Types.TimeValue
 import Tach.Impulse.Types.Impulse
 import Tach.Impulse.Types.TimeValueSeries (TVSStart,TVSEnd)
 import Tach.Migration.Acidic.Types
+import Tach.Acid.Impulse.Cruds.Types
+
 -- import Tach.Migration.Acidic.Instances 
-
-
 
 
 -- |Create an ImpulseTypeStore and return the filepath it was created
 
 -- createTVSimpleImpulseTypeStore :: (ImpulseKey Integer) (ImpulsePeriod (Vector Double) (Integer)) (ImpulseStart Integer) (ImpulseEnd Integer) (ImpulseRep (Seq TVNoKey))
-createTVSimpleImpulseTypeStore :: FilePath -> TVKey -> TVPeriod -> TVSStart -> TVSEnd -> (ImpulseRep (Seq TVNoKey)) -> IO (Either Text FilePath)
-createTVSimpleImpulseTypeStore = undefined
-
 
 
 
 -- |ACID Functions
 
-newtype SuccessValue = SuccessValue { getSuccess :: Value}
-newtype ErrorValue = ErrorValue { getError :: Value } 
 
 
--- | Insert one element into an ImpulseTypeStore , return the number now in the store
+-- | Insert one element into an ImpulseTypeStore , return the number now in the store 
+-- | Insert also updates the bounds of the Data Set
 
 insertTVSimpleImpulse :: TVKey -> (TVNoKey) -> Update TVSimpleImpulseTypeStore (Either ErrorValue SuccessValue)
 insertTVSimpleImpulse tk d = do
   st@(TVSimpleImpulseTypeStore (ImpulseSeries {impulseSeriesKey = k})) <- get 
   case st of 
     _ 
-      | k == tk -> put st' >> (return . Right $ SuccessValue . object $ ["seqSize" .= (sz)])
-      | otherwise -> return . Left $ ErrorValue $  object ["incorrectKey" .= (unKey tk) , "correctKey" .= (unKey k)]  
+      | k == tk -> put st' >> (return . Right $ SuccessValue . LB.toStrict . encode . object $ ["seqSize" .= (sz)])
+      | otherwise -> return . Left $ ErrorValue . LB.toStrict . encode $  object ["incorrectKey" .= (unKey tk) , "correctKey" .= (unKey k)]  
      where
-      st' =  over _TVSimpleImpulseRep (\s -> d <| s) st
-      sz  = views _TVSimpleImpulseRep length st'
-
-
+      st' =   (over _unTimeValueStore (insertIfNewer.insertIfOlder.insertTimeValue) st )
+      sz  = views _TVSimpleImpulseRep size st'
+      appendData = (\s -> (d `insert` s) )
+      insertTimeValue = (over (_impulseSeriesRep . _unRep ) appendData)
+      insertIfOlder = (over (_impulseSeriesStart . _unStart) useOlder )      
+      insertIfNewer = (over (_impulseSeriesEnd . _unEnd) useNewer )      
+      useOlder i = case (d ^. _tvNkSimpleTime) of 
+                  j 
+                       | i <= j -> i -- i still lower bound
+                       | otherwise -> j -- replace lower bound
+          
+      useNewer i = case (d ^. _tvNkSimpleTime) of 
+                  j 
+                       | i >= j -> i -- i still lower bound
+                       | otherwise -> j -- replace lower bound
+          
+                                                            
+      
 
 -- | Like above but batch insert
-insertManyTVSimpleImpulse :: TVKey ->  (Seq TVNoKey) -> Update TVSimpleImpulseTypeStore (Either ErrorValue SuccessValue)
+insertManyTVSimpleImpulse :: TVKey ->  (Set TVNoKey) -> Update TVSimpleImpulseTypeStore (Either ErrorValue SuccessValue)
 insertManyTVSimpleImpulse tk ds = do 
   st@(TVSimpleImpulseTypeStore (ImpulseSeries {impulseSeriesKey = k})) <- get 
+  let mn = findMin ds
+      mx = findMax ds
   case st of 
     _ 
-      | k == tk -> put st' >> (return . Right $ SuccessValue . object $ ["seqSize" .= (sz)])
-      | otherwise -> return . Left $ ErrorValue $  object ["incorrectKey" .= (unKey tk) , "correctKey" .= (unKey k)]  
+      | k == tk -> put st' >> (return . Right $ SuccessValue . LB.toStrict .encode . object $ ["seqSize" .= (sz)])
+      | otherwise -> return . Left $ ErrorValue . LB.toStrict . encode $  object ["incorrectKey" .= (unKey tk) , "correctKey" .= (unKey k)]  
      where
-      st' =  over _TVSimpleImpulseRep (\s -> ds >< s) st
-      sz  = views _TVSimpleImpulseRep length st'
-
-
-
-
-
-
+      st' =  over _unTimeValueStore (insertIfNewer . insertIfOlder . insertTimeValues) st
+      sz  = views _TVSimpleImpulseRep size st'
+      appendData = (\s -> ds `union` s)
+      insertTimeValues = (over (_impulseSeriesRep . _unRep ) appendData)
+      insertIfOlder = (over (_impulseSeriesStart . _unStart) useOlder )      
+      insertIfNewer = (over (_impulseSeriesEnd . _unEnd) useNewer )      
+      useOlder i = case (mn ^. _tvNkSimpleTime) of 
+                  j 
+                       | i <= j -> i -- i still lower bound
+                       | otherwise -> j -- replace lower bound
+          
+      useNewer i = case (mx ^. _tvNkSimpleTime) of 
+                  j 
+                       | i >= j -> i -- i still lower bound
+                       | otherwise -> j -- replace lower bound
+      
 

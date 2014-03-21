@@ -11,7 +11,7 @@ import Tach.Migration.Acidic.Types
 import Tach.Impulse.Types.TimeValue 
 import Tach.Impulse.Types.TimeValueSeries
 import Tach.Impulse.Types.Impulse
-import qualified Data.Sequence as S
+import qualified Data.Set as S
 import qualified Data.IntMap as M
 import qualified Data.Vector as V
 
@@ -31,7 +31,7 @@ initialImpulseStart       = ImpulseStart 0
 initialImpulseEnd :: TVSEnd -- ImpulseEnd Integer
 initialImpulseEnd       = ImpulseEnd 0
 
-initialImpulseRep :: ImpulseRep (S.Seq TVNoKey)
+initialImpulseRep :: ImpulseRep (S.Set TVNoKey)
 initialImpulseRep       = ImpulseRep (S.empty)
 
 -- | IntiialTVSimple not needed cause the rep is empty

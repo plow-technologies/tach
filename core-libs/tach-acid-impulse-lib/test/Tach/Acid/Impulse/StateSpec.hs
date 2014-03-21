@@ -1,4 +1,4 @@
-module Tach.Migration.Acidic.StateSpec (main, spec) where
+module Tach.Acid.Impulse.StateSpec (main, spec) where
 
 import Test.Hspec
 

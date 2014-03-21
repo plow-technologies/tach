@@ -22,6 +22,3 @@ data TVNoKey = TVNoKey {
   tvNkSimpleTime  :: Integer
  ,tvNkSimpleValue :: Double
 } deriving (Show,Generic,Typeable,Ord,Eq)
-
-
-
