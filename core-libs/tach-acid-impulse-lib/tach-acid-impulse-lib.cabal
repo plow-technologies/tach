@@ -17,6 +17,7 @@ Library
                         Tach.Acid.Impulse.Cruds
                         Tach.Acid.Impulse.Cruds.Create
                         Tach.Acid.Impulse.Cruds.Read
+                        Tach.Acid.Impulse.Cruds.Delete
   Other-Modules:        Tach.Acid.Impulse.State.Internal
                         Tach.Acid.Impulse.Cruds.Types
   Build-Depends:        base >= 4 && < 5
@@ -58,7 +59,7 @@ Test-Suite spec
                       , text == 1.1.0.1
                       , bytestring == 0.10.0.2
                       , lens >= 4 
-
+                      , directory 
 
 
 Source-Repository head

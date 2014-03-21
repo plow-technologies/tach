@@ -33,6 +33,7 @@ import Data.Typeable (Typeable)
 -- Impulse Specific 
 import Tach.Acid.Impulse.Cruds.Create
 import Tach.Acid.Impulse.Cruds.Read
+import Tach.Acid.Impulse.Cruds.Delete
 import Tach.Impulse.Types.TimeValue 
 import Tach.Impulse.Types.Impulse
 import Tach.Impulse.Types.TimeValueSeries (TVSStart,TVSEnd)
@@ -53,4 +54,5 @@ createTVSimpleImpulseTypeStore fp tvsIStore= do
 
 -- |Acid Acessors and types
 $(makeAcidic ''TVSimpleImpulseTypeStore [ 'insertTVSimpleImpulse , 'insertManyTVSimpleImpulse
-                                        , 'getTVSimpleImpulse    , 'getTVSimpleImpulseMany ])
+                                        , 'getTVSimpleImpulse    , 'getTVSimpleImpulseMany
+                                        , 'deleteTVSimpleImpulse , 'deleteManyTVSimpleImpulse ])

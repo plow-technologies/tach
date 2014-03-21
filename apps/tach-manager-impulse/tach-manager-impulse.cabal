@@ -17,8 +17,8 @@ Library
   Other-Modules:        Tach.Manager.Impulse.Internal
   Build-Depends:        base >= 4 && < 5
                       , yesod == 1.2.5
-                      , yesod-core == 1.2.7
-                      , unix-process-conduit == 0.2.2
+                      , yesod-core == 1.2.9
+                      , keter == 1.2.0
 
 Test-Suite spec
   Type:                 exitcode-stdio-1.0
@@ -36,7 +36,7 @@ Executable impulse-manager
   Build-Depends:      base
                     , yesod
                     , yesod-core
-                    , unix-process-conduit
+                    , keter
 Source-Repository head
   Type:                 git
 --  Location:             
