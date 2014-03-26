@@ -1,4 +1,5 @@
-module Tach.Manager.ImpulseSpec (main, spec) where
+module Tach.Manager.ImpulseSpec (main,spec) where
+
 
 import Test.Hspec
 
@@ -7,6 +8,7 @@ main = hspec spec
 
 spec :: Spec
 spec = do
-  describe "someFunction" $ do
-    it "should work fine" $ do
+  describe "someFunction in typeSpec" $ do
+    it "should have a definition" $ do
       True `shouldBe` False
+

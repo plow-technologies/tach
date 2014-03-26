@@ -3,6 +3,9 @@ cabal-dev
 *sandbox*
 *~*
 *#*
+*log*
+*keter*
+*txt*
 *.o
 *.hi
 *.chi
