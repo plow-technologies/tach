@@ -49,7 +49,6 @@ spec = do
       let key = 1
           impulseStore = buildTestImpulseTypeStore key 0 199 [1..199] (take 199 [0.0,2.0..])
           nKeys = fromList $ buildNoKeys [200..300] (take 100 $ drop 200 [0.0,2.0..])
-          eSet = fromList [] :: Set TVNoKey
       impulseState <- openLocalStateFrom "teststates/" impulseStore
       update' impulseState (InsertManyTVSimpleImpulse (buildTestImpulseKey key) nKeys)
       eRes <- query' impulseState (GetTVSimpleImpulseMany (buildTestImpulseKey key) (ImpulseStart 200) (ImpulseEnd 300))
