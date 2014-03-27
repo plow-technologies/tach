@@ -32,9 +32,10 @@ import Data.SafeCopy        ( base, deriveSafeCopy )
 import Data.Typeable (Typeable)
 
 -- Impulse Specific 
-import Tach.Acid.Impulse.Cruds.Create
-import Tach.Acid.Impulse.Cruds.Read
-import Tach.Acid.Impulse.Cruds.Delete
+import Tach.Acid.Impulse.Cruds.Create as Tach.Acid.Impulse.Cruds
+import Tach.Acid.Impulse.Cruds.Read as Tach.Acid.Impulse.Cruds
+import Tach.Acid.Impulse.Cruds.Delete as Tach.Acid.Impulse.Cruds
+import Tach.Acid.Impulse.Cruds.Types as Tach.Acid.Impulse.Cruds
 import Tach.Impulse.Types.TimeValue 
 import Tach.Impulse.Types.Impulse
 import Tach.Impulse.Types.TimeValueSeries (TVSStart,TVSEnd)
