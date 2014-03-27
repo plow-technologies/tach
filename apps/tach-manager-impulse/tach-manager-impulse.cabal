@@ -1,5 +1,5 @@
 Name:                   tach-manager-impulse
-Version:                0.0.0
+Version:                0.1.0
 Author:                 Kevin Cotrone <kevincotrone@gmail.com>
 Maintainer:             Kevin Cotrone <kevincotrone@gmail.com>
 License:                BSD3
@@ -16,6 +16,7 @@ Library
   Exposed-Modules:      Tach.Manager.Impulse
   Other-Modules:        Tach.Manager.Impulse.Internal
   Build-Depends:        base >= 4 && < 5
+                      , aeson == 0.7.0.2
                       , yesod == 1.2.5
                       , yaml  == 0.8.8
                       , vector == 0.10.9.1
@@ -56,6 +57,7 @@ Test-Suite spec
   Build-Depends:        base
                       , tach-manager-impulse
                       , hspec
+                      , aeson
                       , yesod 
                       , yaml  
                       , yesod-core 

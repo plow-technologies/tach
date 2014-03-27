@@ -31,8 +31,6 @@ spec = do
       True `shouldBe` False
 
 
-
-
 testFilePath = "."</>"testCFG"<.>"yaml"
 
 testPlugin :: FilePath -> IO Plugin
@@ -43,5 +41,3 @@ testPlugin fp = return $ Plugin { pluginGetEnv = (\a o  -> do
                                      )}
 
 testPluginList = [] -- [\x -> (testPlugin x)]
-
-
