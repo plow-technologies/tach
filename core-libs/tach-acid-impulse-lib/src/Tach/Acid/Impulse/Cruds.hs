@@ -13,6 +13,7 @@ import qualified Filesystem.Path.CurrentOS as P
 import Filesystem.Path
 import CorePrelude
 import Data.Aeson
+import System.Directory (removeDirectoryRecursive)
 
 -- Containers 
 import Data.Sequence
@@ -50,7 +51,11 @@ createTVSimpleImpulseTypeStore fp tvsIStore= do
   createCheckpoint newImpulseStore
   closeAcidState newImpulseStore
   return () 
-    where decodedFilePath = P.encodeString fp 
+    where decodedFilePath = P.encodeString fp
+
+deleteTVSimpleImpulseTypeStore :: P.FilePath -> IO ()
+deleteTVSimpleImpulseTypeStore fp = do
+  removeDirectoryRecursive (P.encodeString fp)
 
 
 
