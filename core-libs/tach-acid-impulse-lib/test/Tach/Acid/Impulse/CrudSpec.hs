@@ -14,7 +14,8 @@ import Data.Acid.Advanced
 
 
 -- Other Libraries 
-import Filesystem.Path
+import qualified Filesystem.Path.CurrentOS as P
+import qualified Data.Text as T
 import Tach.Acid.Impulse.Cruds.Create
 import Tach.Acid.Impulse.Cruds.Read
 import Tach.Impulse.Types.TimeValue 
@@ -74,7 +75,7 @@ spec = do
   describe "DeleteMany" $ do
     it "Should delete a set and then make sure the set is not contained in the resultant set" $ do
       let key = 1
-          impulseStore = buildTestImpulseTypeStore key 0 200 [0,1..200] (take 200 [0.2,0.4..])
+          impulseStore = buildTestImpulseTypeStore key 0 200 [0,1..199] (take 200 [0.2,0.4..])
           nKeys = fromList $ buildNoKeys (take 100 [0..200]) (take 100 [0.2,0.4..])
       impulseState <- openLocalStateFrom "teststates/" (impulseStore)
       update' impulseState (DeleteManyTVSimpleImpulse (buildTestImpulseKey key) nKeys)
@@ -83,7 +84,22 @@ spec = do
       removeDirectoryRecursive "teststates"
       case eRes of
         Left a -> expectationFailure $ "Error when accessing key: " ++ (show a)
-        Right res -> (isSubsetOf nKeys res) `shouldBe` False 
+        Right res -> (nKeys `isSubsetOf` res) `shouldBe` False 
+  describe "Creating acid state store" $ do
+    it "Should create and read a tv simple store and make sure nothing is lost" $ do
+      let key = 1
+          filepath = "" P.<.> "" P.</> "teststates" P.</> ""
+          impulseStore = buildTestImpulseTypeStore key 0 200 [0,1..200] (take 200 [0.2,0.4..])
+          emptyStore = buildTestImpulseTypeStore key 0 0 [] []
+      createDirectory (P.encodeString filepath)
+      createTVSimpleImpulseTypeStore (filepath) impulseStore
+      impulseState <- openLocalStateFrom (P.encodeString filepath) (emptyStore)
+      eRes <- query' impulseState (GetTVSimpleImpulseMany (buildTestImpulseKey key) (ImpulseStart 0) (ImpulseEnd 200))
+      closeAcidState impulseState
+      removeDirectoryRecursive "teststates"
+      case eRes of
+        Left a -> expectationFailure $ "Error when accessing key: " ++ (show a)
+        Right res -> res `shouldBe` (unRep . impulseSeriesRep . unTimeValueStore $ impulseStore)
 
 
 buildNoKeys :: [Integer] -> [Double] -> [TVNoKey]
