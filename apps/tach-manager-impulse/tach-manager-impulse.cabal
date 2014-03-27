@@ -44,8 +44,8 @@ Executable toyproc
                       , system-filepath
                       , system-fileio
                       , basic-prelude
-
-
+                      , yesod-core == 1.2.9
+                      , keter == 1.2.0
 
 Test-Suite spec
   Type:                 exitcode-stdio-1.0
@@ -80,7 +80,7 @@ Executable impulse-manager
   Build-Depends:      base
                     , yesod
                     , yesod-core
-                    , unix-process-conduit
+                    , keter
 Source-Repository head
   Type:                 git
 --  Location:             

@@ -2,7 +2,6 @@
 
 module Main where
 
-import Data.Conduit.Process.Unix
 import Control.Concurrent
 import Control.Monad
 import Yesod

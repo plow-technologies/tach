@@ -1,11 +1,11 @@
 Name:                   tach-acid-impulse-lib
-Version:                0.1.0
+Version:                0.1.2
 Author:                 Scott Murphy <scottmurphy09@gmail.com>
 Maintainer:             Scott Murphy <scottmurphy09@gmail.com>
 License:                BSD3
 License-File:           LICENSE
--- Synopsis:               
--- Description:            
+Synopsis:               Acid library for tach impulse series
+Description:            Handles the acid state for impulse series inside of tach
 Cabal-Version:          >= 1.10
 Build-Type:             Simple
 
@@ -17,11 +17,12 @@ Library
                         Tach.Acid.Impulse.Cruds
                         Tach.Acid.Impulse.Cruds.Create
                         Tach.Acid.Impulse.Cruds.Read
+                        Tach.Acid.Impulse.Cruds.Delete
   Other-Modules:        Tach.Acid.Impulse.State.Internal
                         Tach.Acid.Impulse.Cruds.Types
   Build-Depends:        base >= 4 && < 5
-                      , tach-migration-acidic     == 0.1.2.3
-                      , tach-impulse-series-types == 0.1.5.3
+                      , tach-migration-acidic     == 0.1.4
+                      , tach-impulse-series-types == 0.1.6
                       , safecopy                  == 0.8.3.7569
                       , containers                == 0.5.0.0
                       , vector                    == 0.10.9.1
@@ -58,12 +59,12 @@ Test-Suite spec
                       , text == 1.1.0.1
                       , bytestring == 0.10.0.2
                       , lens >= 4 
-
+                      , directory 
 
 
 Source-Repository head
   Type:                 git
---  Location:             
+  Location:             git@github.com:plow-technologies/tach.git
 
 
 

@@ -61,8 +61,8 @@ insertTVSimpleImpulse tk d = do
   st@(TVSimpleImpulseTypeStore (ImpulseSeries {impulseSeriesKey = k})) <- get 
   case st of 
     _ 
-      | k == tk -> put st' >> (return . Right $ SuccessValue . LB.toStrict . encode . object $ ["seqSize" .= (sz)])
-      | otherwise -> return . Left $ ErrorValue . LB.toStrict . encode $  object ["incorrectKey" .= (unKey tk) , "correctKey" .= (unKey k)]  
+      | k == tk -> put st' >> (return . Right $ SuccessValue . LB.toStrict . encode . object $ ["setSize" .= (sz)])
+      | otherwise -> return . Left $ ErrorValue ErrorIncorrectKey 
      where
       st' =   (over _unTimeValueStore (insertIfNewer.insertIfOlder.insertTimeValue) st )
       sz  = views _TVSimpleImpulseRep size st'
@@ -91,8 +91,8 @@ insertManyTVSimpleImpulse tk ds = do
       mx = findMax ds
   case st of 
     _ 
-      | k == tk -> put st' >> (return . Right $ SuccessValue . LB.toStrict .encode . object $ ["seqSize" .= (sz)])
-      | otherwise -> return . Left $ ErrorValue . LB.toStrict . encode $  object ["incorrectKey" .= (unKey tk) , "correctKey" .= (unKey k)]  
+      | k == tk -> put st' >> (return . Right $ SuccessValue . LB.toStrict .encode . object $ ["setSize" .= (sz)])
+      | otherwise -> return . Left $ ErrorValue ErrorIncorrectKey
      where
       st' =  over _unTimeValueStore (insertIfNewer . insertIfOlder . insertTimeValues) st
       sz  = views _TVSimpleImpulseRep size st'

@@ -25,7 +25,7 @@ main :: IO ()
 main = do
   putStrLn "Starting"
   tempId <- newEmptyMVar
-  threadId <- forkIO $ startWarpNode tempId
+  threadId <- forkIO $ startWarpNode tempIdo
   tempoIdt <- takeMVar tempId
   putStrLn "Killed"
 startWarpNode :: MVar Int -> IO ()
