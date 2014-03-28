@@ -1,5 +1,5 @@
 Name:                   tach-acid-impulse-lib
-Version:                0.1.7
+Version:                0.1.8
 Author:                 Scott Murphy <scottmurphy09@gmail.com>
 Maintainer:             Scott Murphy <scottmurphy09@gmail.com>
 License:                BSD3
@@ -32,7 +32,7 @@ Library
                       , system-filepath           == 0.4.9
                       , basic-prelude             == 0.3.6.0 
                       , aeson                     == 0.7.0.2
-                      , text == 0.11.3.1
+                      , text                      == 0.11.3.1
                       , bytestring == 0.10.0.2
                       , lens >= 4 
                       , directory                 == 1.2.0.1
