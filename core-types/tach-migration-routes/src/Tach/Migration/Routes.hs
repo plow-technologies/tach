@@ -1,6 +1,7 @@
 {-# LANGUAGE QuasiQuotes, TemplateHaskell, TypeFamilies, RecordWildCards, OverloadedStrings #-}
 module Tach.Migration.Routes where
 
+import Control.Concurrent
 import Tach.Migration.Routes.Internal
 import Tach.Acid.Impulse.State
 import Tach.Acid.Impulse.Cruds
@@ -40,6 +41,17 @@ mkYesod "MigrationRoutes" [parseRoutes|
 instance Yesod MigrationRoutes
 
 
+testServer = do
+  impulseState <- openLocalStateFrom "teststate" (emptyStore)
+  warp 3000 (MigrationRoutes "./teststate/" impulseState (buildTestImpulseKey 0))
+
+listTest = do
+  impulseState <- openLocalStateFrom "teststate" (emptyStore)
+  eRes <- query' impulseState (GetTVSimpleImpulseMany (buildTestImpulseKey 0) (ImpulseStart (-4879536533031178240)) (ImpulseEnd 5364650883968821760))
+  closeAcidState impulseState
+  case eRes of
+    Left _ -> return Data.Set.empty
+    Right res -> return res
   
 
 emptyStore :: TVSimpleImpulseTypeStore
@@ -51,7 +63,7 @@ getHomeR = defaultLayout [whamlet|Simple API|]
 getListDataR :: Handler Value
 getListDataR = do
   master <- getYesod
-  eRes <- query' (migrationRoutesAcid master) (GetTVSimpleImpulseMany (buildTestImpulseKey 0) (ImpulseStart 0) (ImpulseEnd 300))
+  eRes <- query' (migrationRoutesAcid master) (GetTVSimpleImpulseMany (buildTestImpulseKey 0) (ImpulseStart (-5879536533031178240)) (ImpulseEnd 5364650883968821760))
   case eRes of
     Left _ -> return . toJSON $ err
               where err :: Text
@@ -71,19 +83,19 @@ getKillNodeR = do
 --send action
 postReceiveTimeSeriesR :: Handler Value
 postReceiveTimeSeriesR = do
-  rBody <- runRequestBody
-  liftIO $ print $ ((\(a,b) -> a) rBody)
-  tsInfo <- parseJsonBody :: Handler (Result (Set TVNoKey)) -- Get the post body
+  tsInfo <- parseJsonBody :: Handler (Result ([TVNoKey])) -- Get the post body
   case tsInfo of
     (Error s) -> do
+      liftIO $ Prelude.putStrLn "Failed"
       return . toJSON $ s
     (Success tvSet) -> do
       master <- getYesod
-      let impulseState = migrationRoutesAcid master
-      --impulseState <- liftIO  $ openLocalStateFrom (migrationRoutesAcidPath master) emptyStore
-      update' impulseState (InsertManyTVSimpleImpulse (migrationRoutesTVKey master) tvSet)
+      liftIO $ Prelude.putStrLn . show $ tvSet
+      --impulsetate <- liftIO  $ openLocalStateFrom (migrationRoutesAcidPath master) emptyStore
+      let state = (migrationRoutesAcid master)
+      update' state (InsertManyTVSimpleImpulse (migrationRoutesTVKey master) (fromList tvSet))
       liftIO $ do
-        createCheckpoint impulseState
+        createCheckpoint state
       resultEither (return . toJSON) (\x -> sendResponseStatus (Status 400 (toStrict $ encode x)) (x)) tsInfo
 
 resultEither :: ToJSON a => (a -> c) -> (String -> c) -> Result a -> c
