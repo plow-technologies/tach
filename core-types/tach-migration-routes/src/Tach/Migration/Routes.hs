@@ -91,7 +91,6 @@ postReceiveTimeSeriesR = do
     (Success tvSet) -> do
       master <- getYesod
       liftIO $ Prelude.putStrLn . show $ tvSet
-      --impulsetate <- liftIO  $ openLocalStateFrom (migrationRoutesAcidPath master) emptyStore
       let state = (migrationRoutesAcid master)
       update' state (InsertManyTVSimpleImpulse (migrationRoutesTVKey master) (fromList tvSet))
       liftIO $ do
