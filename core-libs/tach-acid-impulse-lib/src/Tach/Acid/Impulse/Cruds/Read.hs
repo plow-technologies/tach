@@ -75,16 +75,10 @@ getTVSimpleImpulseMany tk tstart tend
           |otherwise = (Left $ ErrorValue ErrorIncorrectKey)
 
 getTVSimpleImpulseSize :: TVKey -> Query TVSimpleImpulseTypeStore (Either ErrorValue Int)
-getTVSimpleImpulseSize tk = do
-  queryFcn <$> ask
-  where
-    isKey (TVSimpleImpulseTypeStore (ImpulseSeries {impulseSeriesKey = k})) = k == tk 
-    queryFcn st
-      | (isKey st) = Right $ (views _TVSimpleImpulseRep size st)
-      | otherwise = (Left $ ErrorValue ErrorIncorrectKey) 
+getTVSimpleImpulseSize tk = undefined
 
 getTVSimpleImpulseTimeBounds :: TVKey -> Query TVSimpleImpulseTypeStore (Either ErrorValue (ImpulseStart Int, ImpulseEnd Int))
-getTVSimpleImpulseTimeBounds tk = undefined --do
+getTVSimpleImpulseTimeBounds tk = undefined --doPro
   --queryFcn <$> ask
   --where isKey (TVSimpleImpulseTypeStore (ImpulseSeries {impulseSeriesKey = k})) = k == tk
   --queryFcn st
