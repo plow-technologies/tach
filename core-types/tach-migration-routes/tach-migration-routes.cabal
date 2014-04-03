@@ -29,6 +29,8 @@ Library
                       , tach-migration-acidic == 0.1.5
                       , containers == 0.5.0.0
                       , vector == 0.10.9.1
+                      , directed-keys == 0.1.2
+                      , cereal == 0.4.0.1
 Test-Suite spec
   Type:                 exitcode-stdio-1.0
   Hs-Source-Dirs:       src

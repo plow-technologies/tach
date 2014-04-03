@@ -1,7 +1,6 @@
-{-# LANGUAGE QuasiQuotes, TemplateHaskell, TypeFamilies, RecordWildCards, OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes, TemplateHaskell, TypeFamilies, RecordWildCards, OverloadedStrings, DeriveGeneric, GeneralizedNewtypeDeriving #-}
 module Tach.Migration.Routes where
 
-import Control.Concurrent
 import Tach.Migration.Routes.Internal
 import Tach.Acid.Impulse.State
 import Tach.Acid.Impulse.Cruds
@@ -16,8 +15,15 @@ import Tach.Migration.Acidic.Types
 import Data.Set
 import Data.Text
 import Data.ByteString.Lazy
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as C
 import Tach.Impulse.Types.TimeValue
 import Network.HTTP.Types
+import qualified DirectedKeys as DK
+import qualified DirectedKeys.Types as DK
+import qualified Data.Serialize as S
+
+import GHC.Generics
 
 import Tach.Migration.Instances
 
@@ -27,13 +33,13 @@ import Yesod.Core.Types
 
 data MigrationRoutes = MigrationRoutes {
   migrationRoutesAcidPath :: FilePath
- ,migrationRoutesAcid :: AcidState TVSimpleImpulseTypeStore
- ,migrationRoutesTVKey :: TVKey
+ ,migrationRoutesAcid :: AcidState TVSimpleImpulseTypeStore --Possibly an acid map of acid states
+ ,migrationRoutesTVKey :: TVKey                             --A set of TVKeys to handle which PIDs it is responsible for
 }
 
 mkYesod "MigrationRoutes" [parseRoutes|
 / HomeR GET
-/migration/receive/time-series-data ReceiveTimeSeriesR POST
+/migration/receive/time-series-data/#String ReceiveTimeSeriesR POST
 /list ListDataR GET
 /kill KillNodeR GET
 |]
@@ -79,10 +85,15 @@ getKillNodeR = do
   where killing :: Text
         killing = "Killing"
 
+newtype KeyPid = KeyPid { unKeyPid :: Int } deriving (Eq, Show, S.Serialize, Generic)
+newtype KeySource = KeySource { unKeySource :: BS.ByteString } deriving (Eq, Show, S.Serialize, Generic)
+newtype KeyDestination = KeyDestination { unKeyDestination :: BS.ByteString } deriving (Eq, Show, S.Serialize, Generic)
+newtype KeyTime = KeyTime { unKeyTime :: Integer } deriving (Eq, Show, S.Serialize, Generic)
 --post body -> open state -> add post body to state -> check size (possibly start send)-> close state
 --send action
-postReceiveTimeSeriesR :: Handler Value
-postReceiveTimeSeriesR = do
+postReceiveTimeSeriesR :: String -> Handler Value
+postReceiveTimeSeriesR stKey = do
+  let eDKey = DK.decodeKey (C.pack stKey) :: (Either String (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime))
   tsInfo <- parseJsonBody :: Handler (Result ([TVNoKey])) -- Get the post body
   case tsInfo of
     (Error s) -> do
