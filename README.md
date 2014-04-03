@@ -15,8 +15,8 @@ The project is broken into several different classes of package
 
 # Core Types
 
-+ [impulse-series-types] ("./core-types/impulse-series-types/README.md")
-+ [impulse-series-classes] ("./core-types/impulse-series-classes/README.md")
-+ [wavelet-types] (./core-types/wavelet-types/README.md)
++ [impulse-series-types] (./core-types/tach-impulse-series-types/README.md)
++ [impulse-series-classes] (./core-types/tach-impulse-series-classes/README.md)
++ [wavelet-types] (./core-types/tach-wavelet-types/README.md)
 
 
