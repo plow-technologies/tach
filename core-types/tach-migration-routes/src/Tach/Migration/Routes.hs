@@ -13,6 +13,7 @@ import Data.Acid.Advanced
 import qualified Data.Traversable as T
 import Data.ByteString.Lazy
 import Control.Applicative
+import Control.Concurrent
 import Data.Text
 import GHC.Generics
 import Network.HTTP.Types
@@ -53,7 +54,7 @@ type IncomingKey = DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime
 
 data MigrationRoutes = MigrationRoutes {
   migrationRoutesAcidPath :: FilePath
- ,migrationRoutesAcidMap :: M.Map IncomingKey (AcidState TVSimpleImpulseTypeStore) --Possibly an acid map of acid states
+ ,migrationRoutesAcidMap :: MVar (M.Map IncomingKey (AcidState TVSimpleImpulseTypeStore)) --Possibly an acid map of acid states
  ,migrationRoutesTVKeySet :: S.Set TVKey                             --A set of TVKeys to handle which PIDs it is responsible for
 }
 
@@ -69,7 +70,8 @@ instance Yesod MigrationRoutes
 
 testServer = do
   impulseState <- openLocalStateFrom "teststate" (emptyStore)
-  warp 3000 (MigrationRoutes "./teststate/" (impulseStateMap impulseState) (S.singleton . buildTestImpulseKey $ 0))
+  mMap <- newMVar (impulseStateMap impulseState)
+  warp 3000 (MigrationRoutes "./teststate/" mMap (S.singleton . buildTestImpulseKey $ 0))
   where impulseStateMap state = M.singleton (buildIncomingKey (KeyPid 0) (KeySource "www.aacs-us.com") (KeyDestination "http://cloud.aacs-us.com") (KeyTime 0)) state
 
 listTest = do
@@ -93,8 +95,9 @@ getHomeR = defaultLayout [whamlet|Simple API|]
 getListDataR :: String -> Handler Value
 getListDataR stKey = do
   master <- getYesod
+  migrationMap <- liftIO $ readMVar (migrationRoutesAcidMap master)
   let eDKey = DK.decodeKey (C.pack stKey) :: (Either String (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime))
-      eState = eDKey >>= (\dKey -> maybeToEither "Failed to lookup key" $ M.lookup dKey (migrationRoutesAcidMap master))
+      eState = eDKey >>= (\dKey -> maybeToEither "Failed to lookup key" $ M.lookup dKey migrationMap)
       ePidkey = unKeyPid . DK.getSimpleKey <$> eDKey
   eRes <- T.sequence $ (\state pidKey ->
                           query' state (GetTVSimpleImpulseMany (ImpulseKey . toInteger $ pidKey) (ImpulseStart (-5879536533031178240)) (ImpulseEnd 5364650883968821760))) <$>
@@ -104,7 +107,8 @@ getListDataR stKey = do
 getKillNodeR :: Handler Value
 getKillNodeR = do
   master <- getYesod
-  _ <- liftIO $ mapM closeAcidState (M.elems . migrationRoutesAcidMap $ master)
+  migrationMap <- liftIO $ readMVar (migrationRoutesAcidMap master)
+  _ <- liftIO $ mapM closeAcidState (M.elems migrationMap)
   return . toJSON $ killing
   where killing :: Text
         killing = "Killing"
@@ -114,9 +118,10 @@ getKillNodeR = do
 postReceiveTimeSeriesR :: String -> Handler Value
 postReceiveTimeSeriesR stKey = do
   master <- getYesod
+  migrationMap <- liftIO $ readMVar (migrationRoutesAcidMap master)
   let eDKey = DK.decodeKey (C.pack stKey) :: (Either String (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime))
       eState :: Either String (AcidState TVSimpleImpulseTypeStore)
-      eState = eDKey >>= (\dKey -> maybeToEither "Failed to lookup key" $ M.lookup dKey (migrationRoutesAcidMap master))
+      eState = eDKey >>= (\dKey -> maybeToEither "Failed to lookup key" $ M.lookup dKey migrationMap)
       ePidKey = unKeyPid . DK.getSimpleKey <$> eDKey
   eTsInfo <- resultToEither <$> parseJsonBody :: Handler (Either String [TVNoKey]) -- Get the post body
   rslt <- T.sequence $ (\state pidKey tvSet -> do
