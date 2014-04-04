@@ -67,16 +67,24 @@ mkYesod "MigrationRoutes" [parseRoutes|
 
 instance Yesod MigrationRoutes
 
+-- | Used for importing routes into other libraries
+--   ONLY
+migrationRoutesTransport :: IO MigrationRoutes
+migrationRoutesTransport = do
+  mMap <- newEmptyMVar :: IO (MVar (M.Map IncomingKey (AcidState TVSimpleImpulseTypeStore)))
+  return $ MigrationRoutes "" mMap (S.empty)
 
 testServer = do
-  impulseState <- openLocalStateFrom "teststate" (emptyStore)
-  mMap <- newMVar (impulseStateMap impulseState)
-  warp 3000 (MigrationRoutes "./teststate/" mMap (S.singleton . buildTestImpulseKey $ 0))
-  where impulseStateMap state = M.singleton (buildIncomingKey (KeyPid 0) (KeySource "www.aacs-us.com") (KeyDestination "http://cloud.aacs-us.com") (KeyTime 0)) state
+  let dKey = buildIncomingKey (KeyPid 299) (KeySource "www.aacs-us.com") (KeyDestination "http://cloud.aacs-us.com") (KeyTime 0)
+      stateName = C.unpack . DK.parseFilename . DK.encodeKey $ dKey
+  impulseState <- openLocalStateFrom stateName emptyStore
+  mMap <- newMVar (impulseStateMap impulseState dKey)
+  warp 3000 (MigrationRoutes "./teststate/" mMap (S.singleton . buildTestImpulseKey $ 299))
+  where impulseStateMap state key = M.singleton key state
 
 listTest = do
-  impulseState <- openLocalStateFrom "teststate" (emptyStore)
-  eRes <- query' impulseState (GetTVSimpleImpulseMany (buildTestImpulseKey 0) (ImpulseStart (-4879536533031178240)) (ImpulseEnd 5364650883968821760))
+  impulseState <- openLocalStateFrom "teststate" emptyStore
+  eRes <- query' impulseState (GetTVSimpleImpulseMany (buildTestImpulseKey 299) (ImpulseStart (-4879536533031178240)) (ImpulseEnd 5364650883968821760))
   closeAcidState impulseState
   case eRes of
     Left _ -> return S.empty
@@ -87,7 +95,7 @@ buildIncomingKey :: KeyPid -> KeySource -> KeyDestination -> KeyTime -> Incoming
 buildIncomingKey pid source dest time = DK.DKeyRaw pid source dest time
 
 emptyStore :: TVSimpleImpulseTypeStore
-emptyStore = buildTestImpulseTypeStore 0 0 0 [] [] 
+emptyStore = buildTestImpulseTypeStore 299 0 0 [] [] 
 
 getHomeR :: Handler Html
 getHomeR = defaultLayout [whamlet|Simple API|]
@@ -102,7 +110,7 @@ getListDataR stKey = do
   eRes <- T.sequence $ (\state pidKey ->
                           query' state (GetTVSimpleImpulseMany (ImpulseKey . toInteger $ pidKey) (ImpulseStart (-5879536533031178240)) (ImpulseEnd 5364650883968821760))) <$>
                             eState <*> ePidkey
-  return . toJSON . show $ eRes
+  return . toJSON $ (show eRes) ++ (show ePidkey)
 
 getKillNodeR :: Handler Value
 getKillNodeR = do
@@ -131,6 +139,7 @@ postReceiveTimeSeriesR stKey = do
                       eState <*> 
                       ePidKey <*> 
                       eTsInfo
+  _ <- liftIO $ Prelude.putStrLn $ "Pid Received:  " ++ (show ePidKey)
   return . toJSON . show $ rslt
 
 
