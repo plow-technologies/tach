@@ -1,7 +1,7 @@
 {-# LANGUAGE QuasiQuotes, TemplateHaskell, TypeFamilies          #-}
 
 module Main where
-
+import System.Environment
 import Control.Concurrent
 import Control.Monad
 import Yesod
@@ -29,6 +29,7 @@ main = do
 
 startWarpNode :: MVar Int -> IO ()
 startWarpNode status = do
+  portS <- getEnv "PORT"  
   warp 3000 (ImpulseManagerRoutes status)
 
 getHomeR :: Handler Html

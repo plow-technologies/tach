@@ -1,5 +1,7 @@
 {-# LANGUAGE OverloadedStrings, NoImplicitPrelude, NoRecordWildCards #-}
+
 module Tach.Manager.Impulse.AppManagerSpec (main,spec) where
+
 import Tach.Manager.Impulse.AppManager
 import           Data.Conduit.Process.Unix 
 import CorePrelude
@@ -8,6 +10,7 @@ import Data.Default
 import Keter.Types
 import Keter.Main
 import Keter.App
+import Keter.AppManager
 import Keter.Types.Common
 import Data.Yaml
 import Control.Monad 
@@ -20,8 +23,6 @@ import qualified Control.Monad.Trans.State as S
 import qualified Data.HashMap.Strict       as HMap
 import qualified Data.Map as Map
 import qualified System.Random             as R
-
-
 import Test.Hspec
 
 main :: IO ()
@@ -32,9 +33,6 @@ spec = do
   describe "someFunction in typeSpec" $ do
     it "should have a definition" $ do
       True `shouldBe` False
-
-
-
 
 testFilePath = "."</>"testCFG"<.>"yaml"
 
@@ -66,7 +64,6 @@ testPluginList = [] -- [\x -> (testPlugin x)]
 |-}
 
 
-
 testMonitorProcess :: IO MonitoredProcess         
 testMonitorProcess = do
   ptrack <- initProcessTracker
@@ -79,19 +76,39 @@ testMonitorProcess = do
       wrkDir = "./"
       cmdparams = [] 
       envs = [] 
-      extFcn = (\_ -> return True) 
-      
+      extFcn = (\_ -> return True)       
+
 
 
 {-|
+
 start :: AppStartConfig
       -> AppId          -- data AppId = AIBuiltin | AINamed !Appname
       -> AppInput    
       -> IO App
+
 |-}
+
 
 testAppStart = do
   asc <- simpleManager 
   let aid = AINamed "toyproc"
       ain = AIData sampleBundleConfig
   start asc aid ain 
+
+
+testAppManager = do 
+  asc <- simpleManager 
+  let aid = AINamed "toyproc"
+      ain = AIData sampleBundleConfig
+  initialize (\_ -> print "log")  asc   
+
+testFP = "" <.> ""</> "toyproc" <.> "keter"
+
+testManagerUse = do 
+  apmgr <- testAppManager 
+  addApp apmgr testFP
+  addApp apmgr testFP
+  print "App Created!" 
+  threadDelay 10000000 >> terminateApp apmgr "toyproc" >> print "app terminated"  
+

@@ -18,7 +18,6 @@ import qualified Data.HashMap.Strict       as HMap
 import qualified Data.Map as Map
 import qualified System.Random             as R
 
-
 import Test.Hspec
 
 main :: IO ()

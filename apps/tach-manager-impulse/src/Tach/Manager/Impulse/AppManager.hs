@@ -32,7 +32,7 @@ import qualified Data.HashMap.Strict as H
 import qualified Data.Map as Map
     
 emptyTempFolder :: IO TempFolder.TempFolder 
-emptyTempFolder = TempFolder.setup empty 
+emptyTempFolder = TempFolder.setup   $ (kconfigDir emptyKeterConfig) </> "temp" 
 
 emptyPortPool :: PortSettings 
 emptyPortPool = PortSettings [] 
@@ -59,7 +59,7 @@ simpleManager :: IO AppStartConfig
 simpleManager = do 
   processTracker <- initProcessTracker
   tf <-  emptyTempFolder 
-  hostman <- HostMan.start    
+  hostman <- HostMan.start
   portpool <- PortPool.start emptyPortPool
   let appStartConfig = AppStartConfig
                        { ascTempFolder = tf
@@ -76,9 +76,9 @@ simpleManager = do
 
 
 sampleBundleConfig = BundleConfig (V.fromList [defStanza]) H.empty
-
+                     
 defFP :: FilePath
-defFP = ""<.> "" </>""
+defFP = ""<.> "" </> "" 
       
 -- defAppConfig fp = AppConfig { configExec = fp                              -- :: F.FilePath
 --                             , configArgs = []                               -- :: [Text]
@@ -91,7 +91,6 @@ defFP = ""<.> "" </>""
 defStanza :: Stanza port
 defStanza = StanzaBackground (defBackgroundConfig defFP)
 
-
 defBackgroundConfig :: FilePath -> BackgroundConfig
 defBackgroundConfig fp = BackgroundConfig
                       { bgconfigExec = fp
@@ -100,6 +99,8 @@ defBackgroundConfig fp = BackgroundConfig
                       , bgconfigRestartCount = LimitedRestarts 2
                       , bgconfigRestartDelaySeconds = 10
                       }
+
+
 
 
 {-|
@@ -116,4 +117,4 @@ data App = App
     }
 
 |-}
-
+ 

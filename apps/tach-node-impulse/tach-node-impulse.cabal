@@ -15,10 +15,13 @@ Library
   GHC-Options:          -Wall
   Exposed-Modules:      Tach.Node.Impulse
   Other-Modules:        Tach.Node.Impulse.Internal
+                        Args
   Build-Depends:        base >= 4 && < 5
                       , yesod == 1.2.5
                       , yesod-core == 1.2.7
-                      , tach-acid-impulse-lib == 0.1.2
+                      , tach-acid-impulse-lib == 0.1.8
+                      , tach-migration-routes == 0.1.4
+                      , cmdargs
 
 Test-Suite spec
   Type:                 exitcode-stdio-1.0
@@ -28,6 +31,8 @@ Test-Suite spec
   Ghc-Options:          -Wall
   Main-Is:              Spec.hs
   Build-Depends:        base
+                      , tach-migration-routes
+                      , cmdargs
                       , hspec
 
 Executable impulse-node
@@ -37,6 +42,9 @@ Executable impulse-node
                     , yesod
                     , yesod-core
                     , tach-acid-impulse-lib
+                    , tach-migration-routes
+                    , cmdargs
+                    , acid-state
 
 Source-Repository head
   Type:                 git
