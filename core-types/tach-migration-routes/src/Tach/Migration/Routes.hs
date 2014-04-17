@@ -130,7 +130,7 @@ getKillNodeR = do
   migrationMap <- liftIO $ readTVarIO (migrationRoutesAcidMap master)
   let migrationElems = M.elems migrationMap
   let migrationKeys = M.keys migrationMap
-  _ <- liftIO $ mapM createArchive migrationElems -- TODO remove archive
+  _ <- liftIO $ mapM createArchive migrationElems
   _ <- liftIO $ mapM createCheckpointAndClose migrationElems
   directories <- liftIO $ mapM (ST.getDirectory . elemToPath) migrationKeys
   _ <- liftIO $ mapM ST.remove directories
@@ -138,7 +138,7 @@ getKillNodeR = do
   where killing :: Text
         killing = "Killing"
         elemToPath :: IncomingKey -> FilePath
-        elemToPath key = UTF.toString $ BS.append (DK.encodeKey key) "/Archive"
+        elemToPath key = UTF.toString $ BS.append (DK.encodeKey key) "/Archive" --Possibly find a way to make this a little safer?
 
 --post body -> open state -> add post body to state -> check size (possibly start send)-> close state
 --send action
