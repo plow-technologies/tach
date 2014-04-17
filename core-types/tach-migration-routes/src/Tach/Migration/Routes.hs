@@ -130,8 +130,9 @@ getKillNodeR = do
   migrationMap <- liftIO $ readTVarIO (migrationRoutesAcidMap master)
   let migrationElems = M.elems migrationMap
   let migrationKeys = M.keys migrationMap
+  _ <- liftIO $ mapM createCheckpoint migrationElems
   _ <- liftIO $ mapM createArchive migrationElems
-  _ <- liftIO $ mapM createCheckpointAndClose migrationElems
+  _ <- liftIO $ mapM closeAcidState migrationElems
   directories <- liftIO $ mapM (ST.getDirectory . elemToPath) migrationKeys
   _ <- liftIO $ mapM ST.remove directories
   return . toJSON $ killing
