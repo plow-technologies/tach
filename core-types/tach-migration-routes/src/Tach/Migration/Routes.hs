@@ -3,8 +3,6 @@ module Tach.Migration.Routes where
 
 --General Haskell imports
 import Data.Aeson
-import Data.Acid
-import Data.Acid.Advanced
 import qualified Data.Traversable as T
 import Data.ByteString.Lazy
 import Control.Applicative
@@ -15,6 +13,13 @@ import GHC.Generics
 import Network.HTTP.Types
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as C
+import qualified Data.ByteString.UTF8 as UTF
+import qualified System.File.Tree as ST
+
+-- Acid and file related
+import Data.Acid
+import Data.Acid.Advanced
+import Data.Acid.Local
 
 -- Containers
 import qualified Data.Set as S
@@ -100,6 +105,8 @@ emptyStore = buildTestImpulseTypeStore 299 0 0 [] []
 getHomeR :: Handler Html
 getHomeR = defaultLayout [whamlet|Simple API|]
 
+-- | Gets a list of all data for the specific key
+-- should probably be modified to include the start and end times
 getListDataR :: String -> Handler Value
 getListDataR stKey = do
   master <- getYesod
@@ -115,14 +122,23 @@ getListDataR stKey = do
     Right (Left e) -> return . toJSON . show $ e
     Right (Right res) -> return . toJSON $ res
 
+
+-- | Kills a node gracefully by closing the acid state
 getKillNodeR :: Handler Value
 getKillNodeR = do
   master <- getYesod
   migrationMap <- liftIO $ readTVarIO (migrationRoutesAcidMap master)
-  _ <- liftIO $ mapM closeAcidState (M.elems migrationMap)
+  let migrationElems = M.elems migrationMap
+  let migrationKeys = M.keys migrationMap
+  _ <- liftIO $ mapM createArchive migrationElems -- TODO remove archive
+  _ <- liftIO $ mapM createCheckpointAndClose migrationElems
+  directories <- liftIO $ mapM (ST.getDirectory . elemToPath) migrationKeys
+  _ <- liftIO $ mapM ST.remove directories
   return . toJSON $ killing
   where killing :: Text
         killing = "Killing"
+        elemToPath :: IncomingKey -> FilePath
+        elemToPath key = UTF.toString $ BS.append (DK.encodeKey key) "/Archive"
 
 --post body -> open state -> add post body to state -> check size (possibly start send)-> close state
 --send action
