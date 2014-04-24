@@ -75,12 +75,19 @@ getTVSimpleImpulseMany tk tstart tend
           |otherwise = (Left $ ErrorValue ErrorIncorrectKey)
 
 getTVSimpleImpulseSize :: TVKey -> Query TVSimpleImpulseTypeStore (Either ErrorValue Int)
-getTVSimpleImpulseSize tk = undefined
+getTVSimpleImpulseSize tk = queryFcn <$> ask
+  where
+    queryFcn st
+        | (isKey st) = Right $ size (view (_unTimeValueStore . _impulseSeriesRep . _unRep) st)
+        | otherwise = Left $ ErrorValue ErrorIncorrectKey
+    isKey (TVSimpleImpulseTypeStore (ImpulseSeries {impulseSeriesKey = k})) = k == tk 
 
-getTVSimpleImpulseTimeBounds :: TVKey -> Query TVSimpleImpulseTypeStore (Either ErrorValue (ImpulseStart Int, ImpulseEnd Int))
-getTVSimpleImpulseTimeBounds tk = undefined --doPro
-  --queryFcn <$> ask
-  --where isKey (TVSimpleImpulseTypeStore (ImpulseSeries {impulseSeriesKey = k})) = k == tk
-  --queryFcn st
-  --  | (isKey st) = Right $ (views _TVSimpleImpulseRep size st)
-  --  | otherwise = (Left $ ErrorValue ErrorIncorrectKey)
+
+getTVSimpleImpulseTimeBounds :: TVKey -> Query TVSimpleImpulseTypeStore (Either ErrorValue (ImpulseStart Integer, ImpulseEnd Integer))
+getTVSimpleImpulseTimeBounds tk = queryFcn <$> ask
+  where 
+    isKey (TVSimpleImpulseTypeStore (ImpulseSeries {impulseSeriesKey = k})) = k == tk
+    queryFcn st
+      | (isKey st) = let tvSet = view _unTimeValueStore st
+                      in Right (impulseSeriesStart tvSet, impulseSeriesEnd tvSet)
+      | otherwise = (Left $ ErrorValue ErrorIncorrectKey)
