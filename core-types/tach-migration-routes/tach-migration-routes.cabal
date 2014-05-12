@@ -19,7 +19,7 @@ Library
   Build-Depends:        base >= 4 && < 5
                       , yesod == 1.2.5
                       , tach-impulse-series-types == 0.1.7
-                      , tach-acid-impulse-lib == 0.1.9
+                      , tach-acid-impulse-lib == 0.1.10
                       , yesod-core == 1.2.7
                       , aeson == 0.7.0.2
                       , text == 0.11.3.1
@@ -34,6 +34,7 @@ Library
                       , stm == 2.4.3
                       , filesystem-trees == 0.1.0.5
                       , utf8-string == 0.3.7
+                      , s3-simple == 0.1.0.5
 Test-Suite spec
   Type:                 exitcode-stdio-1.0
   Hs-Source-Dirs:       src

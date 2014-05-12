@@ -8,6 +8,7 @@ import Data.ByteString.Lazy
 import Control.Applicative
 import Control.Concurrent
 import Control.Concurrent.STM.TVar
+import Control.Monad
 import Data.Text
 import GHC.Generics
 import Network.HTTP.Types
@@ -15,6 +16,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString.UTF8 as UTF
 import qualified System.File.Tree as ST
+import qualified Network.AWS.S3Simple as S3
 
 -- Acid and file related
 import Data.Acid
@@ -154,6 +156,13 @@ postReceiveTimeSeriesR stKey = do
   eTsInfo <- resultToEither <$> parseJsonBody :: Handler (Either String [TVNoKey]) -- Get the post body
   rslt <- T.sequence $ (\state pidKey tvSet -> do
                       res <- update' state (InsertManyTVSimpleImpulse (ImpulseKey . toInteger $ pidKey) (S.fromList tvSet))
+                      eSetSize <- query' state (GetTVSimpleImpulseSize (ImpulseKey . toInteger $ pidKey))
+                      case eSetSize of 
+                        Left _ -> return ()
+                        Right setSize -> do
+                          case () of _
+                                      | setSize >= 1000 -> liftIO . void . forkIO $ testPrint
+                                      | otherwise -> return ()
                       _ <- liftIO $ createCheckpoint state
                       return res) <$>
                       eState <*> 
@@ -161,6 +170,24 @@ postReceiveTimeSeriesR stKey = do
                       eTsInfo
   _ <- liftIO $ Prelude.putStrLn $ "Pid Received:  " ++ (show ePidKey)
   return . toJSON . show $ rslt
+
+
+uploadState state pidKey = do
+  bounds <- query' state (GetTVSimpleImpulseTimeBounds key)
+  case bounds of
+    (Left _) -> return []
+    (Right (lower,upper)) -> do
+      eList <- query' state (GetTVSimpleImpulseMany key lower upper)
+      case eList of
+        Left _ -> return []
+        Right list -> do
+          return . uploadTVSimple $ list
+  where
+    key = ImpulseKey . toInteger $ pidKey
+
+
+uploadTVSimple tvSet = undefined
+
 
 
 maybeToEither :: String -> Maybe a -> Either String a
@@ -177,6 +204,10 @@ resultToEither (Success s) = Right s
 
 
 
+testPrint :: IO ()
+testPrint = do
+  Prelude.putStrLn "RUNNING"
+  testPrint
 
  --- Just used for testing below this point
 buildTestImpulseRep :: [Integer] -> [Double] -> ImpulseRep (S.Set TVNoKey)

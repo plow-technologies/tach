@@ -63,4 +63,5 @@ deleteTVSimpleImpulseTypeStore fp = do
 -- |Acid Acessors and types
 $(makeAcidic ''TVSimpleImpulseTypeStore [ 'insertTVSimpleImpulse , 'insertManyTVSimpleImpulse
                                         , 'getTVSimpleImpulse    , 'getTVSimpleImpulseMany
-                                        , 'deleteTVSimpleImpulse , 'deleteManyTVSimpleImpulse ])
+                                        , 'deleteTVSimpleImpulse , 'deleteManyTVSimpleImpulse
+                                        , 'getTVSimpleImpulseSize, 'getTVSimpleImpulseTimeBounds ])
