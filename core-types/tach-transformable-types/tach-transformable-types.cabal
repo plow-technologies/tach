@@ -1,5 +1,5 @@
-Name:                   transformable-types
-Version:                0.0.0
+Name:                   tach-transformable-types
+Version:                0.0.0.2
 Author:                 Scott Murphy <scottmurphy09@gmail.com>
 Maintainer:             Scott Murphy <scottmurphy09@gmail.com>
 License:                BSD3
@@ -14,11 +14,12 @@ Library
   HS-Source-Dirs:       src
   GHC-Options:          -Wall
   Exposed-Modules:      Tach.Transformable.Types
-                        Tach.Transformable.Types.Transformw
+                        Tach.Transformable.Types.Transform
   Other-Modules:        Tach.Transformable.Types.Internal
 
   Build-Depends:        base >= 4 && < 5
                       , tach-impulse-series-types == 0.1.7
+                      , tach-periodic == 0.1.0.2
 
 
 Test-Suite spec

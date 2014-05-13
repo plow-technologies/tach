@@ -9,14 +9,18 @@ import Control.Applicative
 import Control.Concurrent
 import Control.Concurrent.STM.TVar
 import Control.Monad
+import Data.Foldable
 import Data.Text
 import GHC.Generics
 import Network.HTTP.Types
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString.UTF8 as UTF
+import qualified Data.ByteString.Lazy as L
 import qualified System.File.Tree as ST
 import qualified Network.AWS.S3Simple as S3
+import qualified Data.Vector.Storable as VS
+import qualified Data.Vector as V
 
 -- Acid and file related
 import Data.Acid
@@ -34,6 +38,8 @@ import Tach.Impulse.Types.Impulse
 import Tach.Impulse.Types.TimeValue
 import Tach.Impulse.Types.TimeValueSeries
 import Tach.Migration.Acidic.Types
+import Tach.Periodic
+import Tach.Transformable.Types
 
 -- Yesod and web related
 import Yesod
@@ -48,6 +54,10 @@ import qualified Data.Serialize as S
 --Directly related Tach imports
 import Tach.Migration.Routes.Internal
 import Tach.Migration.Instances
+
+--Wavelets and Compression
+import qualified Codec.Compression.GZip as GZ
+import Data.Wavelets.Construction
 
 
 -- Data for dealing with incoming requests
@@ -73,6 +83,16 @@ mkYesod "MigrationRoutes" [parseRoutes|
 |]
 
 instance Yesod MigrationRoutes
+
+instance VS.Storable TVNoKey
+instance (ToJSON a, VS.Storable a) => ToJSON (WaveletTransform a) where
+instance (ToJSON a, VS.Storable a) => ToJSON (PeriodicData a) where
+instance (ToJSON a, VS.Storable a) => ToJSON (APeriodicData a) where
+
+
+s3Conn :: S3.S3Connection
+s3Conn = S3.S3Connection S3.defaultS3Host "AKIAI5PX6WURXC7EAEWA" "n+l3EqtsdVwPidtOZ++l/CdK/cJzrAmTih+O9JFi"
+
 
 -- | Used for importing routes into other libraries
 --   ONLY
@@ -161,7 +181,9 @@ postReceiveTimeSeriesR stKey = do
                         Left _ -> return ()
                         Right setSize -> do
                           case () of _
-                                      | setSize >= 1000 -> liftIO . void . forkIO $ testPrint
+                                      | setSize >= 1000 -> do
+                                        _ <- liftIO . void . forkIO $ void $ uploadState state (toInteger pidKey) 15 1 100
+                                        return ()
                                       | otherwise -> return ()
                       _ <- liftIO $ createCheckpoint state
                       return res) <$>
@@ -171,20 +193,42 @@ postReceiveTimeSeriesR stKey = do
   _ <- liftIO $ Prelude.putStrLn $ "Pid Received:  " ++ (show ePidKey)
   return . toJSON . show $ rslt
 
-
-uploadState state pidKey = do
+ --classify, compress, upload
+uploadState :: AcidState (EventState GetTVSimpleImpulseTimeBounds)
+                              -> Integer
+                              -> Integer
+                              -> Integer
+                              -> Int
+                              -> IO (Either String (S3.S3Result ()))
+uploadState state pidKey period delta minPeriodicSize = do
   bounds <- query' state (GetTVSimpleImpulseTimeBounds key)
   case bounds of
-    (Left _) -> return []
+    (Left _) -> return $ Left "Error retrieving bounds"
     (Right (lower,upper)) -> do
-      eList <- query' state (GetTVSimpleImpulseMany key lower upper)
-      case eList of
-        Left _ -> return []
-        Right list -> do
-          return . uploadTVSimple $ list
+      eSet <- query' state (GetTVSimpleImpulseMany key lower upper)
+      case eSet of
+        Left _ -> return $ Left "Error retrieving set"
+        Right set -> do
+          let compresedSet = GZ.compress . encode $ (fmap periodicToTransform) . tvDataToEither <$> (classifySet period delta minPeriodicSize set)
+          uploadToS3 "testtach" "testfile.zip" "" compresedSet >>= return . Right
   where
     key = ImpulseKey . toInteger $ pidKey
 
+
+uploadToS3 :: String -> String -> String -> L.ByteString -> IO (S3.S3Result ())
+uploadToS3 bucket filename path contents = do
+  let object = S3.S3Object filename (L.toStrict contents) bucket path "application/zip"
+  S3.uploadObject s3Conn (S3.S3Bucket bucket "" S3.US) object 
+
+
+classifySet :: Integer -> Integer -> Int -> S.Set TVNoKey -> [TVData TVNoKey]
+classifySet period delta minPeriodicSize set = classifyData period delta minPeriodicSize tvNkSimpleTime $ S.toList set
+
+
+periodicToTransform ::  (PeriodicData TVNoKey) -> (WaveletTransform Double)
+periodicToTransform (PeriodicData periodic) = 
+  let levels = ceiling ( logBase 2 (fromIntegral . VS.length $ periodic))
+  in WaveletTransform $ defaultVdwt levels (VS.map tvNkSimpleValue periodic)
 
 uploadTVSimple tvSet = undefined
 
@@ -207,7 +251,6 @@ resultToEither (Success s) = Right s
 testPrint :: IO ()
 testPrint = do
   Prelude.putStrLn "RUNNING"
-  testPrint
 
  --- Just used for testing below this point
 buildTestImpulseRep :: [Integer] -> [Double] -> ImpulseRep (S.Set TVNoKey)
