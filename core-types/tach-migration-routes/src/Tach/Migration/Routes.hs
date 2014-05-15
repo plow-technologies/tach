@@ -40,6 +40,7 @@ import Tach.Impulse.Types.TimeValueSeries
 import Tach.Migration.Acidic.Types
 import Tach.Periodic
 import Tach.Transformable.Types
+import Tach.Migration.Types
 
 -- Yesod and web related
 import Yesod
@@ -71,8 +72,8 @@ instance (ToJSON a, VS.Storable a) => ToJSON (PeriodicData a) where
 instance (ToJSON a, VS.Storable a) => ToJSON (APeriodicData a) where
 
 
-s3Conn :: S3.S3Connection
-s3Conn = S3.S3Connection S3.defaultS3Host "" ""
+tempS3Conn :: S3.S3Connection
+tempS3Conn = S3.S3Connection S3.defaultS3Host "" ""
 
 
 -- | Used for importing routes into other libraries
@@ -80,14 +81,14 @@ s3Conn = S3.S3Connection S3.defaultS3Host "" ""
 migrationRoutesTransport :: IO MigrationRoutes
 migrationRoutesTransport = do
   mMap <- newTVarIO M.empty  :: IO (TVar (M.Map IncomingKey (AcidState TVSimpleImpulseTypeStore)))
-  return $ MigrationRoutes "" mMap (S.empty)
+  return $ MigrationRoutes "" mMap (S.empty) tempS3Conn
 
 testServer = do
   let dKey = buildIncomingKey (KeyPid 299) (KeySource "www.aacs-us.com") (KeyDestination "http://cloud.aacs-us.com") (KeyTime 0)
       stateName = C.unpack . DK.parseFilename . DK.encodeKey $ dKey
   impulseState <- openLocalStateFrom stateName emptyStore
   mMap <- newTVarIO (impulseStateMap impulseState dKey)
-  warp 3000 (MigrationRoutes "./teststate/" mMap (S.singleton . buildTestImpulseKey $ 299))
+  warp 3000 (MigrationRoutes "./teststate/" mMap (S.singleton . buildTestImpulseKey $ 299) tempS3Conn)
   where impulseStateMap state key = M.singleton key state
 
 listTest = do
@@ -154,34 +155,42 @@ postReceiveTimeSeriesR stKey = do
       eState :: Either String (AcidState TVSimpleImpulseTypeStore)
       eState = eDKey >>= (\dKey -> maybeToEither "Failed to lookup key" $ M.lookup dKey migrationMap)
       ePidKey = unKeyPid . DK.getSimpleKey <$> eDKey
+  liftIO $ Prelude.putStrLn (show ePidKey)
   eTsInfo <- resultToEither <$> parseJsonBody :: Handler (Either String [TVNoKey]) -- Get the post body
   rslt <- T.sequence $ (\state pidKey tvSet -> do
                       res <- update' state (InsertManyTVSimpleImpulse (ImpulseKey . toInteger $ pidKey) (S.fromList tvSet))
                       eSetSize <- query' state (GetTVSimpleImpulseSize (ImpulseKey . toInteger $ pidKey))
+                      liftIO $ Prelude.putStrLn . show $ eSetSize
                       case eSetSize of 
-                        Left _ -> return ()
+                        Left _ -> do
+                          liftIO $ Prelude.putStrLn "NOT STARTING UPLOAD failed?"
+                          return ()
                         Right setSize -> do
                           case () of _
-                                      | setSize >= 1000 -> do
-                                        _ <- liftIO . void . forkIO $ void $ uploadState state (toInteger pidKey) 15 1 100
+                                      | setSize >= 100 -> do
+                                        _ <- liftIO . forkIO $ void $ uploadState (s3Conn master) state (toInteger pidKey) 15 1 100
+                                        _ <- liftIO $ Prelude.putStrLn "Starting upload"
                                         return ()
-                                      | otherwise -> return ()
+                                      | otherwise -> do
+                                        _ <- liftIO $ Prelude.putStrLn "NOT STARTING UPLOAD"
+                                        return ()
                       _ <- liftIO $ createCheckpoint state
                       return res) <$>
                       eState <*> 
                       ePidKey <*> 
                       eTsInfo
   _ <- liftIO $ Prelude.putStrLn $ "Pid Received:  " ++ (show ePidKey)
+  liftIO $ Prelude.putStrLn $ "rslt: " ++ (show rslt)
   return . toJSON . show $ rslt
 
  --classify, compress, upload
-uploadState :: AcidState (EventState GetTVSimpleImpulseTimeBounds)
+uploadState :: S3.S3Connection -> AcidState (EventState GetTVSimpleImpulseTimeBounds)
                               -> Integer
                               -> Integer
                               -> Integer
                               -> Int
                               -> IO (Either String (S3.S3Result ()))
-uploadState state pidKey period delta minPeriodicSize = do
+uploadState s3Conn state pidKey period delta minPeriodicSize = do
   bounds <- query' state (GetTVSimpleImpulseTimeBounds key)
   case bounds of
     (Left _) -> return $ Left "Error retrieving bounds"
@@ -191,13 +200,13 @@ uploadState state pidKey period delta minPeriodicSize = do
         Left _ -> return $ Left "Error retrieving set"
         Right set -> do
           let compresedSet = GZ.compress . encode $ (fmap periodicToTransform) . tvDataToEither <$> (classifySet period delta minPeriodicSize set)
-          uploadToS3 "testtach" "testfile.zip" "" compresedSet >>= return . Right
+          uploadToS3 s3Conn "testtach" "testfile.zip" "" compresedSet >>= return . Right
   where
     key = ImpulseKey . toInteger $ pidKey
 
 
-uploadToS3 :: String -> String -> String -> L.ByteString -> IO (S3.S3Result ())
-uploadToS3 bucket filename path contents = do
+uploadToS3 :: S3.S3Connection -> String -> String -> String -> L.ByteString -> IO (S3.S3Result ())
+uploadToS3 s3Conn bucket filename path contents = do
   let object = S3.S3Object filename (L.toStrict contents) bucket path "application/zip"
   S3.uploadObject s3Conn (S3.S3Bucket bucket "" S3.US) object 
 

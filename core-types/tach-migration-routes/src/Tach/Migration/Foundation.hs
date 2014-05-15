@@ -37,16 +37,7 @@ import Tach.Migration.Routes.Internal
 --Wavelets and Compression
 import qualified Codec.Compression.GZip as GZ
 import Data.Wavelets.Construction
-
-
--- Data for dealing with incoming requests
-newtype KeyPid = KeyPid { unKeyPid :: Int } deriving (Eq, Ord, Show,S.Serialize, Generic)
-newtype KeySource = KeySource { unKeySource :: BS.ByteString } deriving (Eq, Ord, Show,S.Serialize, Generic)
-newtype KeyDestination = KeyDestination { unKeyDestination :: BS.ByteString } deriving (Eq, Ord, Show, S.Serialize, Generic)
-newtype KeyTime = KeyTime { unKeyTime :: Integer } deriving (Eq, Ord, Show, S.Serialize, Generic)
-
-type IncomingKey = DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime
-
+import Tach.Migration.Types
 
 data MigrationRoutes = MigrationRoutes {
   migrationRoutesAcidPath :: FilePath

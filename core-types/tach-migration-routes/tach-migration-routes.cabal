@@ -41,6 +41,7 @@ Library
                       , zlib == 0.5.4.1
                       , tach-transformable-types == 0.0.0.2
                       , yaml
+                      , tach-migration-types == 0.1.0
 Test-Suite spec
   Type:                 exitcode-stdio-1.0
   Hs-Source-Dirs:       src
@@ -60,6 +61,37 @@ Test-Suite spec
                       , http-types
                       , acid-state
 
+executable         migration-app
+    main-is:           Main.hs
+    hs-source-dirs:    src
+    Build-Depends:      base
+                      , cmdargs
+                      , yesod
+                      , tach-impulse-series-types
+                      , tach-acid-impulse-lib
+                      , yesod-core
+                      , aeson
+                      , text
+                      , bytestring
+                      , http-types
+                      , acid-state
+                      , tach-migration-acidic
+                      , containers
+                      , vector
+                      , directed-keys
+                      , cereal
+                      , stm
+                      , filesystem-trees
+                      , utf8-string
+                      , s3-simple
+                      , tach-periodic
+                      , wavelets
+                      , zlib
+                      , tach-transformable-types
+                      , yaml
+                      , tach-migration-types
+                      , tach-migration-routes
+    ghc-options:       -threaded -O2 -rtsopts -Wall
 Source-Repository head
   Type:                 git
   Location:             git@github.com:plow-technologies/tach.git
