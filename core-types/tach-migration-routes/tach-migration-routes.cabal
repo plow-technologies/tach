@@ -40,6 +40,7 @@ Library
                       , wavelets == 0.1.4
                       , zlib == 0.5.4.1
                       , tach-transformable-types == 0.0.0.2
+                      , yaml
 Test-Suite spec
   Type:                 exitcode-stdio-1.0
   Hs-Source-Dirs:       src

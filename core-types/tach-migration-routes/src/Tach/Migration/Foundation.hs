@@ -5,6 +5,8 @@ module Tach.Migration.Foundation where
 import Control.Concurrent.STM.TVar
 import GHC.Generics
 import qualified Data.ByteString as BS
+import qualified Network.AWS.S3Simple as S3
+
 
 -- Acid and file related
 import Data.Acid
@@ -50,6 +52,7 @@ data MigrationRoutes = MigrationRoutes {
   migrationRoutesAcidPath :: FilePath
  ,migrationRoutesAcidMap :: TVar (M.Map IncomingKey (AcidState TVSimpleImpulseTypeStore)) --Possibly an acid map of acid states
  ,migrationRoutesTVKeySet :: S.Set TVKey                             --A set of TVKeys to handle which PIDs it is responsible for
+ , s3Conn :: S3.S3Connection
 }
 
 mkYesodData "MigrationRoutes" $(parseRoutesFile "migration-routes")
