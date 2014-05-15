@@ -72,7 +72,7 @@ instance (ToJSON a, VS.Storable a) => ToJSON (APeriodicData a) where
 
 
 s3Conn :: S3.S3Connection
-s3Conn = S3.S3Connection S3.defaultS3Host "AKIAI5PX6WURXC7EAEWA" "n+l3EqtsdVwPidtOZ++l/CdK/cJzrAmTih+O9JFi"
+s3Conn = S3.S3Connection S3.defaultS3Host "" ""
 
 
 -- | Used for importing routes into other libraries
