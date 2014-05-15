@@ -59,28 +59,9 @@ import Tach.Migration.Instances
 import qualified Codec.Compression.GZip as GZ
 import Data.Wavelets.Construction
 
+import Tach.Migration.Foundation
 
--- Data for dealing with incoming requests
-newtype KeyPid = KeyPid { unKeyPid :: Int } deriving (Eq, Ord, Show,S.Serialize, Generic)
-newtype KeySource = KeySource { unKeySource :: BS.ByteString } deriving (Eq, Ord, Show,S.Serialize, Generic)
-newtype KeyDestination = KeyDestination { unKeyDestination :: BS.ByteString } deriving (Eq, Ord, Show, S.Serialize, Generic)
-newtype KeyTime = KeyTime { unKeyTime :: Integer } deriving (Eq, Ord, Show, S.Serialize, Generic)
-
-type IncomingKey = DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime
-
-
-data MigrationRoutes = MigrationRoutes {
-  migrationRoutesAcidPath :: FilePath
- ,migrationRoutesAcidMap :: TVar (M.Map IncomingKey (AcidState TVSimpleImpulseTypeStore)) --Possibly an acid map of acid states
- ,migrationRoutesTVKeySet :: S.Set TVKey                             --A set of TVKeys to handle which PIDs it is responsible for
-}
-
-mkYesod "MigrationRoutes" [parseRoutes|
-/ HomeR GET
-/migration/receive/time-series-data/#String ReceiveTimeSeriesR POST
-/list/#String ListDataR GET
-/kill KillNodeR GET
-|]
+mkYesodDispatch "MigrationRoutes" resourcesMigrationRoutes
 
 instance Yesod MigrationRoutes
 
