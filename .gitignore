@@ -11,3 +11,6 @@ cabal-dev
 *.chi
 *.chs.h
 .virthualenv
+*testState*
+*teststate*
+*teststates*
