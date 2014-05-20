@@ -11,6 +11,7 @@ import Control.Concurrent.STM.TVar
 import Control.Monad
 import Data.Foldable
 import Data.Text
+import Foreign.Storable
 import GHC.Generics
 import Network.HTTP.Types
 import qualified Data.ByteString as BS
@@ -66,10 +67,11 @@ mkYesodDispatch "MigrationRoutes" resourcesMigrationRoutes
 
 instance Yesod MigrationRoutes
 
-instance VS.Storable TVNoKey where
-instance (ToJSON a, VS.Storable a) => ToJSON (WaveletTransform a) where
-instance (ToJSON a, VS.Storable a) => ToJSON (PeriodicData a) where
-instance (ToJSON a, VS.Storable a) => ToJSON (APeriodicData a) where
+-- instance VS.Storable TVNoKey where
+ -- sizeOf x = (sizeOf . tvNkSimpleTime $ x) + (sizeOf . tvNkSimpleValue $ x)
+instance (ToJSON a) => ToJSON (WaveletTransform a) where
+instance (ToJSON a) => ToJSON (PeriodicData a) where
+instance (ToJSON a) => ToJSON (APeriodicData a) where
 
 
 tempS3Conn :: S3.S3Connection
@@ -186,8 +188,8 @@ postReceiveTimeSeriesR stKey = do
  --classify, compress, upload
 uploadState :: S3.S3Connection -> AcidState (EventState GetTVSimpleImpulseTimeBounds)
                               -> Integer
-                              -> Integer
-                              -> Integer
+                              -> Int
+                              -> Int
                               -> Int
                               -> IO (Either String (S3.S3Result ()))
 uploadState s3Conn state pidKey period delta minPeriodicSize = do
@@ -199,10 +201,20 @@ uploadState s3Conn state pidKey period delta minPeriodicSize = do
       case eSet of
         Left _ -> return $ Left "Error retrieving set"
         Right set -> do
-          Prelude.putStrLn "In the right portion"
-          let compresedSet = GZ.compress . encode $ (fmap periodicToTransform) . tvDataToEither <$> (classifySet period delta minPeriodicSize set)
-          Prelude.putStrLn "post compression"
-          res <- uploadToS3 s3Conn "testtach" "testfile.zip" "" compresedSet >>= return . Right
+          Prelude.putStrLn $ "In the right portion: " ++ (show . S.size $ set)
+          let classified = (classifySet period delta minPeriodicSize set)
+          Prelude.putStrLn . show $ classified
+          let eithered = tvDataToEither <$> classified
+          Prelude.putStrLn . show $ eithered
+          let transformed = (fmap periodicToTransform) <$> eithered
+          Prelude.putStrLn  "Transformed"
+          let encoded = encode transformed
+          Prelude.putStrLn . show $ encoded
+          let compressedSet = GZ.compress encoded
+          Prelude.putStrLn . show $ compressedSet
+          -- let compressedSet = GZ.compress . encode $ (fmap periodicToTransform) . tvDataToEither <$> (classifySet period delta minPeriodicSize set)
+          Prelude.putStrLn $ "post compression" ++ (show compressedSet)
+          res <- uploadToS3 s3Conn "testtach" "testfile.zip" "" compressedSet >>= return . Right
           Prelude.putStrLn $ "New result, possibly lazy?" ++  (show  res)
           return res
   where
@@ -215,7 +227,7 @@ uploadToS3 s3Conn bucket filename path contents = do
   S3.uploadObject s3Conn (S3.S3Bucket bucket "" S3.US) object 
 
 
-classifySet :: Integer -> Integer -> Int -> S.Set TVNoKey -> [TVData TVNoKey]
+classifySet :: Int -> Int -> Int -> S.Set TVNoKey -> [TVData TVNoKey]
 classifySet period delta minPeriodicSize set = classifyData period delta minPeriodicSize tvNkSimpleTime $ S.toList set
 
 
@@ -247,7 +259,7 @@ testPrint = do
   Prelude.putStrLn "RUNNING"
 
  --- Just used for testing below this point
-buildTestImpulseRep :: [Integer] -> [Double] -> ImpulseRep (S.Set TVNoKey)
+buildTestImpulseRep :: [Int] -> [Double] -> ImpulseRep (S.Set TVNoKey)
 buildTestImpulseRep is ds = ImpulseRep . S.fromList $ Prelude.zipWith bldFcn is ds 
     where 
       bldFcn i d = TVNoKey i d
@@ -257,10 +269,10 @@ buildTestImpulseRep is ds = ImpulseRep . S.fromList $ Prelude.zipWith bldFcn is 
 buildTestImpulseKey :: Integer -> TVKey
 buildTestImpulseKey i = ImpulseKey i 
 
-buildTestImpulseStart :: Integer -> TVSStart
+buildTestImpulseStart :: Int -> TVSStart
 buildTestImpulseStart i = ImpulseStart i 
 
-buildTestImpulseEnd :: Integer -> TVSEnd
+buildTestImpulseEnd :: Int -> TVSEnd
 buildTestImpulseEnd i = ImpulseEnd i 
 
 
@@ -270,7 +282,7 @@ buildTestImpulsePeriod = initialImpulsePeriod
 
 
 
-buildTestImpulseSeries :: Integer -> Integer -> Integer -> [Integer] -> [Double] 
+buildTestImpulseSeries :: Integer -> Int -> Int -> [Int] -> [Double] 
                        -> ImpulseSeries TVKey TVPeriod TVSStart TVSEnd (ImpulseRep (S.Set TVNoKey))
 buildTestImpulseSeries key start end is ds = ImpulseSeries                                 
                                              (buildTestImpulseKey key )                    
@@ -279,7 +291,7 @@ buildTestImpulseSeries key start end is ds = ImpulseSeries
                                              (buildTestImpulseEnd end )
                                              (buildTestImpulseRep is ds)
 
-buildTestImpulseTypeStore ::Integer -> Integer -> Integer -> [Integer] -> [Double] 
+buildTestImpulseTypeStore ::Integer -> Int -> Int -> [Int] -> [Double] 
                           -> TVSimpleImpulseTypeStore 
 buildTestImpulseTypeStore key start end is ds = TVSimpleImpulseTypeStore 
                                                 (buildTestImpulseSeries key start end is ds)

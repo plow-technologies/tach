@@ -46,7 +46,7 @@ elookupLE a s = case lookupLE a s of
 
 -- | get the value closest to the time given in a set
 
-getTVSimpleImpulse :: TVKey -> Integer ->  Query TVSimpleImpulseTypeStore (Either ErrorValue TVNoKey)
+getTVSimpleImpulse :: TVKey -> Int ->  Query TVSimpleImpulseTypeStore (Either ErrorValue TVNoKey)
 getTVSimpleImpulse tk tm = queryFcn <$> ask
  where 
    fakeTvNoKey = TVNoKey tm 0.0 -- fake data entry used to query the db
@@ -83,7 +83,7 @@ getTVSimpleImpulseSize tk = queryFcn <$> ask
     isKey (TVSimpleImpulseTypeStore (ImpulseSeries {impulseSeriesKey = k})) = k == tk 
 
 
-getTVSimpleImpulseTimeBounds :: TVKey -> Query TVSimpleImpulseTypeStore (Either ErrorValue (ImpulseStart Integer, ImpulseEnd Integer))
+getTVSimpleImpulseTimeBounds :: TVKey -> Query TVSimpleImpulseTypeStore (Either ErrorValue (ImpulseStart Int, ImpulseEnd Int))
 getTVSimpleImpulseTimeBounds tk = queryFcn <$> ask
   where 
     isKey (TVSimpleImpulseTypeStore (ImpulseSeries {impulseSeriesKey = k})) = k == tk

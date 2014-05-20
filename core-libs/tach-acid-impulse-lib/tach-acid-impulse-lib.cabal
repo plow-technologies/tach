@@ -1,5 +1,5 @@
 Name:                   tach-acid-impulse-lib
-Version:                0.1.12
+Version:                0.1.14
 Author:                 Scott Murphy <scottmurphy09@gmail.com>
 Maintainer:             Scott Murphy <scottmurphy09@gmail.com>
 License:                BSD3
@@ -22,8 +22,8 @@ Library
   Other-Modules:        Tach.Acid.Impulse.State.Internal
                         Tach.Acid.Impulse.Cruds.Types
   Build-Depends:        base >= 4 && < 5
-                      , tach-migration-acidic     == 0.1.5
-                      , tach-impulse-series-types == 0.1.7
+                      , tach-migration-acidic     == 0.1.6
+                      , tach-impulse-series-types == 0.1.8
                       , safecopy                  == 0.8.3.7569
                       , containers                == 0.5.0.0
                       , vector                    == 0.10.9.1
@@ -46,7 +46,7 @@ Test-Suite spec
   Ghc-Options:          -Wall
   Main-Is:              Spec.hs
   Build-Depends:        base
-                      , tach-acid-impulse-lib
+                      -- , tach-acid-impulse-lib
                       , hspec
                       , tach-migration-acidic     
                       , tach-impulse-series-types 

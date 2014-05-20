@@ -7,7 +7,7 @@ import Tach.Impulse.Types.Impulse
 import Data.Typeable (Typeable)
 import Data.Vector
 type TVKey = ImpulseKey Integer
-type TVTypeOfTime = Integer
+type TVTypeOfTime = Int
 type TVParameterType = Vector Double
 type TVPeriod  = ImpulsePeriod TVParameterType TVTypeOfTime 
 
@@ -19,6 +19,6 @@ data TVSimple = TVSimple{
 
 
 data TVNoKey = TVNoKey {
-  tvNkSimpleTime  :: Integer
+  tvNkSimpleTime  :: Int
  ,tvNkSimpleValue :: Double
 } deriving (Show,Generic,Typeable,Ord,Eq)
