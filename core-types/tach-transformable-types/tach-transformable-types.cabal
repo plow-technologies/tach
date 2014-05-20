@@ -1,11 +1,11 @@
 Name:                   tach-transformable-types
-Version:                0.0.0.3
+Version:                0.1.0
 Author:                 Scott Murphy <scottmurphy09@gmail.com>
 Maintainer:             Scott Murphy <scottmurphy09@gmail.com>
 License:                BSD3
 License-File:           LICENSE
--- Synopsis:               
--- Description:            
+Synopsis:               Tranformable types for wavelets
+Description:            Types that can be transformed to wavelet types mainly used for type extraction
 Cabal-Version:          >= 1.10
 Build-Type:             Simple
 
@@ -34,4 +34,4 @@ Test-Suite spec
 
 Source-Repository head
   Type:                 git
---  Location:             
+  Location:             https://github.com/plow-technologies/tach

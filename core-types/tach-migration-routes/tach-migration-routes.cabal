@@ -1,5 +1,5 @@
 Name:                   tach-migration-routes
-Version:                0.1.4.2
+Version:                0.1.6
 Author:                 Kevin Cotrone <kevincotrone@gmail.com>
 Maintainer:             Kevin Cotrone <kevincotrone@gmail.com>
 License:                BSD3
@@ -39,11 +39,12 @@ Library
                       , tach-periodic == 0.1.1
                       , wavelets == 0.1.5
                       , zlib == 0.5.4.1
-                      , tach-transformable-types == 0.0.0.3
+                      , tach-transformable-types == 0.1.0
                       , yaml
                       , tach-migration-types == 0.1.0
 Test-Suite spec
   Type:                 exitcode-stdio-1.0
+  Default-Language:     Haskell2010
   Hs-Source-Dirs:       src
                       , test
   Ghc-Options:          -Wall
@@ -63,6 +64,7 @@ Test-Suite spec
 
 executable         migration-app
     main-is:           Main.hs
+    Default-Language:     Haskell2010
     hs-source-dirs:    src
     Build-Depends:      base
                       , cmdargs

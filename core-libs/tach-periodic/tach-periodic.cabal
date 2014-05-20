@@ -4,8 +4,8 @@ Author:                 Kevin Cotrone <kevincotrone@gmail.com>
 Maintainer:             Kevin Cotrone <kevincotrone@gmail.com>
 License:                BSD3
 License-File:           LICENSE
--- Synopsis:               
--- Description:            
+Synopsis:               Classify Periodic data
+Description:            classify and transform data with a wavelet transform
 Cabal-Version:          >= 1.10
 Build-Type:             Simple
 
@@ -39,4 +39,4 @@ Test-Suite spec
 
 Source-Repository head
   Type:                 git
---  Location:             
+  Location:             https://github.com/plow-technologies/tach
