@@ -12,7 +12,7 @@ type TVParameterType = Vector Double
 type TVPeriod  = ImpulsePeriod TVParameterType TVTypeOfTime 
 
 data TVSimple = TVSimple{
-  tvSimpleTime  :: Integer
+  tvSimpleTime  :: Int
  ,tvSimpleId    :: Int 
  ,tvSimpleValue :: Double
 } deriving (Show,Generic,Typeable,Ord,Eq)

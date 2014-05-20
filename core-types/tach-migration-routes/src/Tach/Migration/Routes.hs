@@ -66,7 +66,7 @@ mkYesodDispatch "MigrationRoutes" resourcesMigrationRoutes
 
 instance Yesod MigrationRoutes
 
-instance VS.Storable TVNoKey
+instance VS.Storable TVNoKey where
 instance (ToJSON a, VS.Storable a) => ToJSON (WaveletTransform a) where
 instance (ToJSON a, VS.Storable a) => ToJSON (PeriodicData a) where
 instance (ToJSON a, VS.Storable a) => ToJSON (APeriodicData a) where
@@ -199,8 +199,12 @@ uploadState s3Conn state pidKey period delta minPeriodicSize = do
       case eSet of
         Left _ -> return $ Left "Error retrieving set"
         Right set -> do
+          Prelude.putStrLn "In the right portion"
           let compresedSet = GZ.compress . encode $ (fmap periodicToTransform) . tvDataToEither <$> (classifySet period delta minPeriodicSize set)
-          uploadToS3 s3Conn "testtach" "testfile.zip" "" compresedSet >>= return . Right
+          Prelude.putStrLn "post compression"
+          res <- uploadToS3 s3Conn "testtach" "testfile.zip" "" compresedSet >>= return . Right
+          Prelude.putStrLn $ "New result, possibly lazy?" ++  (show  res)
+          return res
   where
     key = ImpulseKey . toInteger $ pidKey
 
