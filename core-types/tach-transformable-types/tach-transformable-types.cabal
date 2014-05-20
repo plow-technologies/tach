@@ -19,7 +19,7 @@ Library
 
   Build-Depends:        base >= 4 && < 5
                       , tach-impulse-series-types == 0.1.8
-                      , tach-periodic == 0.1.0.3
+                      , tach-periodic == 0.1.1
 
 
 Test-Suite spec

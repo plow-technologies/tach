@@ -201,21 +201,11 @@ uploadState s3Conn state pidKey period delta minPeriodicSize = do
       case eSet of
         Left _ -> return $ Left "Error retrieving set"
         Right set -> do
-          Prelude.putStrLn $ "In the right portion: " ++ (show . S.size $ set)
-          let classified = (classifySet period delta minPeriodicSize set)
-          Prelude.putStrLn . show $ classified
-          let eithered = tvDataToEither <$> classified
-          Prelude.putStrLn . show $ eithered
-          let transformed = (fmap periodicToTransform) <$> eithered
-          Prelude.putStrLn  "Transformed"
-          let encoded = encode transformed
-          Prelude.putStrLn . show $ encoded
-          let compressedSet = GZ.compress encoded
-          Prelude.putStrLn . show $ compressedSet
-          -- let compressedSet = GZ.compress . encode $ (fmap periodicToTransform) . tvDataToEither <$> (classifySet period delta minPeriodicSize set)
+          let compressedSet = GZ.compress . encode $ (fmap periodicToTransform) . tvDataToEither <$> (classifySet period delta minPeriodicSize set)
           Prelude.putStrLn $ "post compression" ++ (show compressedSet)
-          res <- uploadToS3 s3Conn "testtach" "testfile.zip" "" compressedSet >>= return . Right
-          Prelude.putStrLn $ "New result, possibly lazy?" ++  (show  res)
+          Prelude.putStrLn $ "decompressed" ++ (show . GZ.decompress $ compressedSet)
+          res <- uploadToS3 s3Conn "testtach" "testfile.txt" "testFolder" compressedSet >>= return . Right
+          Prelude.putStrLn $ "S3 Result -> " ++  (show  res)
           return res
   where
     key = ImpulseKey . toInteger $ pidKey
@@ -223,7 +213,7 @@ uploadState s3Conn state pidKey period delta minPeriodicSize = do
 
 uploadToS3 :: S3.S3Connection -> String -> String -> String -> L.ByteString -> IO (S3.S3Result ())
 uploadToS3 s3Conn bucket filename path contents = do
-  let object = S3.S3Object filename (L.toStrict contents) bucket path "application/zip"
+  let object = S3.S3Object filename (L.toStrict contents) bucket path "text/plain"
   S3.uploadObject s3Conn (S3.S3Bucket bucket "" S3.US) object 
 
 
@@ -233,10 +223,9 @@ classifySet period delta minPeriodicSize set = classifyData period delta minPeri
 
 periodicToTransform ::  (PeriodicData TVNoKey) -> (WaveletTransform Double)
 periodicToTransform (PeriodicData periodic) = 
-  let levels = ceiling ( logBase 2 (fromIntegral . VS.length $ periodic))
-  in WaveletTransform $ defaultVdwt levels (VS.map tvNkSimpleValue periodic)
+  let levels = ceiling ( logBase 2 (fromIntegral . V.length $ periodic))
+  in WaveletTransform $ defaultVdwt levels (V.map tvNkSimpleValue periodic)
 
-uploadTVSimple tvSet = undefined
 
 
 
