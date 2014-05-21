@@ -2,3 +2,4 @@
 /migration/receive/time-series-data/#String ReceiveTimeSeriesR POST
 /list/#String ListDataR GET
 /kill KillNodeR GET
+/query/timeseries QueryTimeSeriesR POST

@@ -152,6 +152,7 @@ getKillNodeR = do
 postReceiveTimeSeriesR :: String -> Handler Value
 postReceiveTimeSeriesR stKey = do
   master <- getYesod
+  liftIO $ Prelude.putStrLn stKey
   migrationMap <- liftIO $ readTVarIO (migrationRoutesAcidMap master)
   let eDKey = DK.decodeKey (C.pack stKey) :: (Either String (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime))
       eState :: Either String (AcidState TVSimpleImpulseTypeStore)
@@ -159,40 +160,65 @@ postReceiveTimeSeriesR stKey = do
       ePidKey = unKeyPid . DK.getSimpleKey <$> eDKey
   liftIO $ Prelude.putStrLn (show ePidKey)
   eTsInfo <- resultToEither <$> parseJsonBody :: Handler (Either String [TVNoKey]) -- Get the post body
-  rslt <- T.sequence $ (\state pidKey tvSet -> do
-                      res <- update' state (InsertManyTVSimpleImpulse (ImpulseKey . toInteger $ pidKey) (S.fromList tvSet))
-                      eSetSize <- query' state (GetTVSimpleImpulseSize (ImpulseKey . toInteger $ pidKey))
-                      liftIO $ Prelude.putStrLn . show $ eSetSize
-                      case eSetSize of 
-                        Left _ -> do
-                          liftIO $ Prelude.putStrLn "NOT STARTING UPLOAD failed?"
-                          return ()
-                        Right setSize -> do
-                          case () of _
-                                      | setSize >= 100 -> do
-                                        _ <- liftIO . forkIO $ void $ uploadState (s3Conn master) state (toInteger pidKey) 15 1 100
-                                        _ <- liftIO $ Prelude.putStrLn "Starting upload"
-                                        return ()
-                                      | otherwise -> do
-                                        _ <- liftIO $ Prelude.putStrLn "NOT STARTING UPLOAD"
-                                        return ()
-                      _ <- liftIO $ createCheckpoint state
-                      return res) <$>
-                      eState <*> 
-                      ePidKey <*> 
-                      eTsInfo
-  _ <- liftIO $ Prelude.putStrLn $ "Pid Received:  " ++ (show ePidKey)
-  liftIO $ Prelude.putStrLn $ "rslt: " ++ (show rslt)
-  return . toJSON . show $ rslt
+  rslt <- T.sequence $ (handleInsert master stKey) <$> eState <*>  ePidKey <*> eTsInfo
+  void $ liftIO $ Prelude.putStrLn $ "Pid Received:  " ++ (show ePidKey)
+  sendResponseStatus status501 $ toJSON err
+  where err :: String
+        err = "ERROR"
+
+
+handleInsert :: (Integral a, MonadHandler m) => MigrationRoutes 
+                                      -> String 
+                                      -> AcidState (EventState InsertManyTVSimpleImpulse) 
+                                      -> a 
+                                      -> [TVNoKey] 
+                                      -> m (EventResult InsertManyTVSimpleImpulse)
+handleInsert master stKey state pidKey tvSet = do
+  res <- update' state (InsertManyTVSimpleImpulse (ImpulseKey . toInteger $ pidKey) (S.fromList tvSet))
+  eSetSize <- query' state (GetTVSimpleImpulseSize (ImpulseKey . toInteger $ pidKey))
+  liftIO . Prelude.putStrLn . show $ eSetSize
+  case eSetSize of 
+    Left _ -> do
+      void $ liftIO $ Prelude.putStrLn "NOT STARTING UPLOAD failed?"
+      void $ liftIO $ createCheckpoint state
+      sendResponseStatus status501 $ toJSON err
+    Right setSize -> do
+      if (setSize >= 100)
+        then do
+          eBounds <- query' state (GetTVSimpleImpulseTimeBounds (ImpulseKey . toInteger $ pidKey))
+          case eBounds of
+            (Left _) -> do
+              liftIO $ Prelude.putStrLn "Error"
+              void $ liftIO $ createCheckpoint state
+              sendResponseStatus status501 $ toJSON err
+            (Right (ImpulseStart start, ImpulseEnd end)) -> do
+              let fName = (show start) ++ "_" ++ (show end)
+              void $ liftIO $ Prelude.putStrLn "Started"
+              void $ liftIO . forkIO . void $ uploadState (s3Conn master) state stKey  fName (toInteger pidKey) 15 1 100
+              void $ liftIO $ Prelude.putStrLn "Starting upload"
+              void $ liftIO $ createCheckpoint state
+              sendResponseStatus status201 $ toJSON done
+        else do
+          void $ liftIO $ Prelude.putStrLn "NOT STARTING UPLOAD"
+          void $ liftIO $ createCheckpoint state
+          sendResponseStatus status501 $ toJSON err
+  sendResponseStatus status501 $ toJSON err
+  return res
+  where err :: String
+        err = "ERROR"
+        done :: String
+        done = "DONE"
 
  --classify, compress, upload
 uploadState :: S3.S3Connection -> AcidState (EventState GetTVSimpleImpulseTimeBounds)
+                              -> String
+                              -> String
                               -> Integer
                               -> Int
                               -> Int
                               -> Int
                               -> IO (Either String (S3.S3Result ()))
-uploadState s3Conn state pidKey period delta minPeriodicSize = do
+uploadState s3Conn state dKey fName pidKey period delta minPeriodicSize = do
   bounds <- query' state (GetTVSimpleImpulseTimeBounds key)
   case bounds of
     (Left _) -> return $ Left "Error retrieving bounds"
@@ -204,7 +230,7 @@ uploadState s3Conn state pidKey period delta minPeriodicSize = do
           let compressedSet = GZ.compress . encode $ (fmap periodicToTransform) . tvDataToEither <$> (classifySet period delta minPeriodicSize set)
           Prelude.putStrLn $ "post compression" ++ (show compressedSet)
           Prelude.putStrLn $ "decompressed" ++ (show . GZ.decompress $ compressedSet)
-          res <- uploadToS3 s3Conn "testtach" "testfile.txt" "testFolder" compressedSet >>= return . Right
+          res <- uploadToS3 s3Conn "testtach" fName dKey compressedSet >>= return . Right
           Prelude.putStrLn $ "S3 Result -> " ++  (show  res)
           return res
   where
@@ -215,6 +241,52 @@ uploadToS3 :: S3.S3Connection -> String -> String -> String -> L.ByteString -> I
 uploadToS3 s3Conn bucket filename path contents = do
   let object = S3.S3Object filename (L.toStrict contents) bucket path "text/plain"
   S3.uploadObject s3Conn (S3.S3Bucket bucket "" S3.US) object 
+
+data TimeSeriesQuery = TimeSeriesQuery {
+  tsqKey :: String
+, tsqStart :: Int
+, tsqEnd :: Int
+, tsqPeriod :: Int
+, tsqDelta :: Int
+} deriving (Read, Show, Eq, Generic)
+
+instance FromJSON TimeSeriesQuery where
+instance ToJSON TimeSeriesQuery where
+
+postQueryTimeSeriesR :: Handler Value
+postQueryTimeSeriesR = do
+  eQuery <- resultToEither <$> parseJsonBody :: Handler (Either String TimeSeriesQuery) -- Get the post body
+  case eQuery of
+    Left err -> sendResponseStatus status501 $ toJSON err
+    Right (TimeSeriesQuery key start end period delta) -> do
+      master <- getYesod
+      migrationMap <- liftIO $ readTVarIO (migrationRoutesAcidMap master)
+      let eDKey = DK.decodeKey (C.pack key) :: (Either String (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime))
+          eState = eDKey >>= (\dKey -> maybeToEither "Failed to lookup key" $ M.lookup dKey migrationMap)
+          ePidkey = unKeyPid . DK.getSimpleKey <$> eDKey
+      eRes <- T.sequence $ (\state pidKey ->
+                              query' state (GetTVSimpleImpulseMany (ImpulseKey . toInteger $ pidKey) (ImpulseStart start) (ImpulseEnd end))) <$>
+                                eState <*> ePidkey
+      case eRes of
+        Left s -> sendResponseStatus status501 $ toJSON . show $ s
+        Right (Left e) -> sendResponseStatus status501 $ toJSON . show $ e
+        Right (Right res) -> do
+          let listRes = S.toList res
+          if (not . Prelude.null $ listRes)
+            then
+              sendResponseStatus status200 $ toJSON $ listRes
+            else
+              sendResponseStatus status200 $ toJSON $ Prelude.foldl (foldPeriod period delta) ([Prelude.head listRes], (Prelude.head listRes) ) (Prelude.tail listRes)
+              where foldPeriod period delta (list, lastItem) currItem = 
+                      if ((timeDiff >= (period - delta)) && (timeDiff <= (period + delta)))
+                        then (list++[currItem],currItem) 
+                        else (list,lastItem)
+                      where timeDiff = (tvNkSimpleTime currItem - tvNkSimpleTime lastItem)
+
+
+
+
+
 
 
 classifySet :: Int -> Int -> Int -> S.Set TVNoKey -> [TVData TVNoKey]
