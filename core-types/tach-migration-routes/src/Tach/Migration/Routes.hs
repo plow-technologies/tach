@@ -162,9 +162,9 @@ postReceiveTimeSeriesR stKey = do
   eTsInfo <- resultToEither <$> parseJsonBody :: Handler (Either String [TVNoKey]) -- Get the post body
   rslt <- T.sequence $ (handleInsert master stKey) <$> eState <*>  ePidKey <*> eTsInfo
   void $ liftIO $ Prelude.putStrLn $ "Pid Received:  " ++ (show ePidKey)
-  sendResponseStatus status501 $ toJSON err
+  sendResponseStatus status200 $ toJSON err
   where err :: String
-        err = "ERROR"
+        err = "Ended"
 
 
 handleInsert :: (Integral a, MonadHandler m) => MigrationRoutes 
@@ -183,7 +183,7 @@ handleInsert master stKey state pidKey tvSet = do
       void $ liftIO $ createCheckpoint state
       sendResponseStatus status501 $ toJSON err
     Right setSize -> do
-      if (setSize >= 100)
+      if (setSize >= 5000)
         then do
           eBounds <- query' state (GetTVSimpleImpulseTimeBounds (ImpulseKey . toInteger $ pidKey))
           case eBounds of
@@ -201,7 +201,7 @@ handleInsert master stKey state pidKey tvSet = do
         else do
           void $ liftIO $ Prelude.putStrLn "NOT STARTING UPLOAD"
           void $ liftIO $ createCheckpoint state
-          sendResponseStatus status501 $ toJSON err
+          sendResponseStatus status201 $ toJSON err
   sendResponseStatus status501 $ toJSON err
   return res
   where err :: String
@@ -217,7 +217,7 @@ uploadState :: S3.S3Connection -> AcidState (EventState GetTVSimpleImpulseTimeBo
                               -> Int
                               -> Int
                               -> Int
-                              -> IO (Either String (S3.S3Result ()))
+                              -> IO (Either String ())
 uploadState s3Conn state dKey fName pidKey period delta minPeriodicSize = do
   bounds <- query' state (GetTVSimpleImpulseTimeBounds key)
   case bounds of
@@ -231,8 +231,17 @@ uploadState s3Conn state dKey fName pidKey period delta minPeriodicSize = do
           Prelude.putStrLn $ "post compression" ++ (show compressedSet)
           Prelude.putStrLn $ "decompressed" ++ (show . GZ.decompress $ compressedSet)
           res <- uploadToS3 s3Conn "testtach" fName dKey compressedSet >>= return . Right
-          Prelude.putStrLn $ "S3 Result -> " ++  (show  res)
-          return res
+          case res of
+            (Right (S3.S3Success _)) -> do
+              removeState key set
+              where removeState k s = do
+                      deleteResult <- update' state (DeleteManyTVSimpleImpulse k s)
+                      case deleteResult of
+                        Left _ -> removeState k s
+                        Right _ -> return . Right $ ()
+            (Right (S3.S3Error _)) -> do
+              uploadState s3Conn state dKey fName pidKey period delta minPeriodicSize
+          return . Right $ ()
   where
     key = ImpulseKey . toInteger $ pidKey
 
@@ -274,9 +283,9 @@ postQueryTimeSeriesR = do
           let listRes = S.toList res
           if (not . Prelude.null $ listRes)
             then
-              sendResponseStatus status200 $ toJSON $ listRes
+              sendResponseStatus status201 $ toJSON $ listRes
             else
-              sendResponseStatus status200 $ toJSON $ Prelude.foldl (foldPeriod period delta) ([Prelude.head listRes], (Prelude.head listRes) ) (Prelude.tail listRes)
+              sendResponseStatus status201 $ toJSON $ Prelude.foldl (foldPeriod period delta) ([Prelude.head listRes], (Prelude.head listRes) ) (Prelude.tail listRes)
               where foldPeriod period delta (list, lastItem) currItem = 
                       if ((timeDiff >= (period - delta)) && (timeDiff <= (period + delta)))
                         then (list++[currItem],currItem) 
