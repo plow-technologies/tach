@@ -48,5 +48,6 @@ main = do
                   stateName = C.unpack . DK.parseFilename . DK.encodeKey $ dKey
               impulseState <- openLocalStateFrom stateName emptyStore
               mMap <- newTVarIO (impulseStateMap impulseState dKey)
-              warp 3000 (MigrationRoutes "./teststate/" mMap (S.singleton . buildTestImpulseKey $ 299) conn)
+              sMap <- newTVarIO (M.singleton dKey Idle)
+              warp 3000 (MigrationRoutes "./teststate/" mMap (S.singleton . buildTestImpulseKey $ 299) conn sMap)
               where impulseStateMap state key = M.singleton key state

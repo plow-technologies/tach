@@ -44,6 +44,9 @@ data MigrationRoutes = MigrationRoutes {
  ,migrationRoutesAcidMap :: TVar (M.Map IncomingKey (AcidState TVSimpleImpulseTypeStore)) --Possibly an acid map of acid states
  ,migrationRoutesTVKeySet :: S.Set TVKey                             --A set of TVKeys to handle which PIDs it is responsible for
  , s3Conn :: S3.S3Connection
+ ,stateMap :: TVar (M.Map IncomingKey StateStatus)
 }
+
+data StateStatus = Uploading | Idle
 
 mkYesodData "MigrationRoutes" $(parseRoutesFile "migration-routes")

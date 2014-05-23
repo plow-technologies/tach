@@ -21,7 +21,7 @@ import Data.SafeCopy        ( base, deriveSafeCopy )
 
 -- Lens Specific 
 import Tach.Acid.Impulse.Lens
-import Control.Lens (over,views, (^.) )
+import Control.Lens (over,views, (^.), set, view)
 import Filesystem.Path
 import Tach.Impulse.Types.TimeValue 
 import Tach.Impulse.Types.Impulse
@@ -34,23 +34,31 @@ deleteTVSimpleImpulse tk d = do
   st@(TVSimpleImpulseTypeStore (ImpulseSeries {impulseSeriesKey = k})) <- get
   case st of
     _
-      | k == tk -> put st' >> (return . Right $ SuccessValue . LB.toStrict . encode . object $ ["setSize" .= (sz)])
+      | k == tk -> put st'' >> (return . Right $ SuccessValue . LB.toStrict . encode . object $ ["setSize" .= (sz)])
       | otherwise -> return . Left $ ErrorValue ErrorIncorrectKey
      where
       st' = (over _unTimeValueStore (removeTVKey) st)
+      newSet = (view (_unTimeValueStore . _impulseSeriesRep . _unRep) st')
+      st'' = (over _unTimeValueStore (updateLower . updateHigher) st')
       sz = views _TVSimpleImpulseRep size st'
       remove = (\set -> d `delete` set)
       removeTVKey = (over (_impulseSeriesRep . _unRep) remove)
+      updateHigher = (set (_impulseSeriesEnd . _unEnd) (tvNkSimpleTime $ findMax newSet) )
+      updateLower = (set (_impulseSeriesStart . _unStart) (tvNkSimpleTime $ findMin newSet) )
 
 deleteManyTVSimpleImpulse :: TVKey -> (Set TVNoKey) -> Update TVSimpleImpulseTypeStore (Either ErrorValue SuccessValue)
 deleteManyTVSimpleImpulse tk ds = do
   st@(TVSimpleImpulseTypeStore (ImpulseSeries {impulseSeriesKey = k})) <- get
   case st of
     _
-      | k == tk -> put st' >> (return . Right $ SuccessValue . LB.toStrict . encode . object $ ["setSize" .= (sz)])
+      | k == tk -> put st'' >> (return . Right $ SuccessValue . LB.toStrict . encode . object $ ["setSize" .= (sz)])
       | otherwise -> return . Left $ ErrorValue ErrorIncorrectKey
       where
         st' = (over _unTimeValueStore (removeTVKeys) st)
+        newSet = (view (_unTimeValueStore . _impulseSeriesRep . _unRep) st')
+        st'' = (over _unTimeValueStore (updateLower . updateHigher) st')
         sz = views _TVSimpleImpulseRep size st'
         setMinus = (\set -> set `difference` ds)
         removeTVKeys = (over (_impulseSeriesRep . _unRep) setMinus)
+        updateHigher = (set (_impulseSeriesEnd . _unEnd) (tvNkSimpleTime $ findMax newSet) )
+        updateLower = (set (_impulseSeriesStart . _unStart) (tvNkSimpleTime $ findMin newSet) )
