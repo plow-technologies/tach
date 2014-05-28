@@ -110,7 +110,7 @@ buildIncomingKey :: KeyPid -> KeySource -> KeyDestination -> KeyTime -> Incoming
 buildIncomingKey pid source dest time = DK.DKeyRaw pid source dest time
 
 emptyStore :: TVSimpleImpulseTypeStore
-emptyStore = buildTestImpulseTypeStore 299 0 0 [] [] 
+emptyStore = buildTestImpulseTypeStore (DK.DKeyRaw (KeyPid 299) (KeySource "") (KeyDestination "") (KeyTime 0)) 0 0 [] [] 
 
 getHomeR :: Handler Html
 getHomeR = defaultLayout [whamlet|Simple API|]
