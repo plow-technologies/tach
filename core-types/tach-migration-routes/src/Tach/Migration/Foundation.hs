@@ -58,8 +58,8 @@ defK  = (DK.DKeyRaw { getSimpleKey = KeyPid 0
                         , getDest = KeyDestination "onping.aacs-us.com"                        
                         , getDateTime = KeyTime 1398048132 })
 
-migrationRoutesStoreCellKey :: CellKey KeyPid KeySource KeyDestination KeyTime TVSimpleImpulseTypeStore
-migrationRoutesStoreCellKey = CellKey { getKey = getKeyFcn 
+tvSimpleStoreCellKey :: CellKey KeyPid KeySource KeyDestination KeyTime TVSimpleImpulseTypeStore
+tvSimpleStoreCellKey = CellKey { getKey = getKeyFcn 
                                   , codeCellKeyFilename = fullEncode
                                   , decodeCellKeyFilename = fullDecode}
 
@@ -78,11 +78,10 @@ decodeDirectedKeyRaw akey =  case (DK.decodeKey $ TE.encodeUtf8 $ akey) of
                        Right r -> Right r
 
 
-initTVSimpleMigrationRoutes :: TVSimpleImpulseTypeStore
-initTVSimpleMigrationRoutes = TVSimpleImpulseTypeStore (ImpulseSeries (ImpulseKey (DK.DKeyRaw (KeyPid 0) (KeySource "") (KeyDestination "") (KeyTime 0))) (IPeriodParameterized (V.empty)) (ImpulseStart 0) (ImpulseEnd 0) (ImpulseRep S.empty))
-
-initSimpleMigrationRoutesStore = TVSimpleMigrationRoutes defK initTVSimpleMigrationRoutes
+initTVSimpleStore :: TVSimpleImpulseTypeStore
+initTVSimpleStore = TVSimpleImpulseTypeStore (ImpulseSeries (ImpulseKey (DK.DKeyRaw (KeyPid 0) (KeySource "") (KeyDestination "") (KeyTime 0))) (IPeriodParameterized (V.empty)) (ImpulseStart 0) (ImpulseEnd 0) (ImpulseRep S.empty))
 
 
 
-$(makeAcidCell 'migrationRoutesStoreCellKey 'initTVSimpleMigrationRoutes  ''TVSimpleMigrationRoutes)
+
+$(makeAcidCell 'tvSimpleStoreCellKey 'initTVSimpleStore  ''TVSimpleImpulseTypeStore)

@@ -94,12 +94,12 @@ testServer = do
   impulseState <- openLocalStateFrom stateName emptyStore
   mMap <- newTVarIO (impulseStateMap impulseState dKey)
   sMap <- newTVarIO (M.singleton dKey Idle)
-  warp 3000 (MigrationRoutes "./teststate/" mMap (S.singleton . buildTestImpulseKey $ 299) tempS3Conn sMap "http://cloud.aacs-us.com")
+  warp 3000 (MigrationRoutes "./teststate/" mMap (S.singleton . buildTestImpulseKey $  (DK.DKeyRaw (KeyPid 299) (KeySource "") (KeyDestination "") (KeyTime 0))) tempS3Conn sMap "http://cloud.aacs-us.com")
   where impulseStateMap state key = M.singleton key state
 
 listTest = do
   impulseState <- openLocalStateFrom "teststate" emptyStore
-  eRes <- query' impulseState (GetTVSimpleImpulseMany (buildTestImpulseKey 299) (ImpulseStart (-4879536533031178240)) (ImpulseEnd 5364650883968821760))
+  eRes <- query' impulseState (GetTVSimpleImpulseMany (buildTestImpulseKey (DK.DKeyRaw (KeyPid 299) (KeySource "") (KeyDestination "") (KeyTime 0))) (ImpulseStart (-4879536533031178240)) (ImpulseEnd 5364650883968821760))
   closeAcidState impulseState
   case eRes of
     Left _ -> return S.empty
