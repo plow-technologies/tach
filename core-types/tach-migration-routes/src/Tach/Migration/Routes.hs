@@ -62,6 +62,7 @@ import Tach.Migration.Instances
 import qualified Codec.Compression.GZip as GZ
 import Data.Wavelets.Construction
 
+import Tach.Migration.Routes.Types
 import Tach.Migration.Foundation
 
 mkYesodDispatch "MigrationRoutes" resourcesMigrationRoutes
@@ -85,7 +86,7 @@ migrationRoutesTransport :: IO MigrationRoutes
 migrationRoutesTransport = do
   mMap <- newTVarIO M.empty  :: IO (TVar (M.Map IncomingKey (AcidState TVSimpleImpulseTypeStore)))
   sMap <- newTVarIO (M.empty)
-  return $ MigrationRoutes "" mMap (S.empty) tempS3Conn sMap
+  return $ MigrationRoutes "" mMap (S.empty) tempS3Conn sMap "http://cloud.aacs-us.com"
 
 testServer = do
   let dKey = buildIncomingKey (KeyPid 299) (KeySource "www.aacs-us.com") (KeyDestination "http://cloud.aacs-us.com") (KeyTime 0)
@@ -93,7 +94,7 @@ testServer = do
   impulseState <- openLocalStateFrom stateName emptyStore
   mMap <- newTVarIO (impulseStateMap impulseState dKey)
   sMap <- newTVarIO (M.singleton dKey Idle)
-  warp 3000 (MigrationRoutes "./teststate/" mMap (S.singleton . buildTestImpulseKey $ 299) tempS3Conn sMap)
+  warp 3000 (MigrationRoutes "./teststate/" mMap (S.singleton . buildTestImpulseKey $ 299) tempS3Conn sMap "http://cloud.aacs-us.com")
   where impulseStateMap state key = M.singleton key state
 
 listTest = do
@@ -123,9 +124,9 @@ getListDataR stKey = do
   let eDKey = DK.decodeKey (C.pack stKey) :: (Either String (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime))
       eState = eDKey >>= (\dKey -> maybeToEither "Failed to lookup key" $ M.lookup dKey migrationMap)
       ePidkey = unKeyPid . DK.getSimpleKey <$> eDKey
-  eRes <- T.sequence $ (\state pidKey ->
-                          query' state (GetTVSimpleImpulseMany (ImpulseKey . toInteger $ pidKey) (ImpulseStart (-5879536533031178240)) (ImpulseEnd 5364650883968821760))) <$>
-                            eState <*> ePidkey
+  eRes <- T.sequence $ (\state pidKey key ->
+                          query' state (GetTVSimpleImpulseMany (ImpulseKey key) (ImpulseStart (-5879536533031178240)) (ImpulseEnd 5364650883968821760))) <$>
+                            eState <*> ePidkey <*> eDKey
   case eRes of
     Left s -> return . toJSON $ (show s) ++ (show ePidkey)
     Right (Left e) -> return . toJSON . show $ e
@@ -162,22 +163,42 @@ postReceiveTimeSeriesR stKey = do
       eState = eDKey >>= (\dKey -> maybeToEither "Failed to lookup key" $ M.lookup dKey migrationMap)
       ePidKey = unKeyPid . DK.getSimpleKey <$> eDKey
   eTsInfo <- resultToEither <$> parseJsonBody :: Handler (Either String [TVNoKey]) -- Get the post body
-  rslt <- T.sequence $ (handleInsert master stKey) <$> eState <*> eDKey <*>  ePidKey <*> eTsInfo
+  case eDKey of
+    Left err -> sendResponseStatus status501 $ toJSON err
+    Right dKey -> do
+      case eState of
+        Left err -> do
+          undefined
+        Right state -> do
+          undefined
+  rslt <- T.sequence $ (saveAndUploadState master stKey ) <$> eState <*> eDKey <*> eTsInfo
   sendResponseStatus status200 $ toJSON end
   where end :: String
         end = "Ended"
 
+saveAndUploadState master stKey state dKey tvNkList = do
+  let destination = (migrationRoutesDestination master)
+  case dKey of
+    key@(DK.DKeyRaw {getDest = destination}) -> do
+      handleInsert master stKey state dKey (ImpulseKey key) tvNkList
+    otherwise -> do
+      sendResponseStatus status500 $ toJSON incorrectDestination
+      undefined
+      where incorrectDestination :: String
+            incorrectDestination = "Incorrect destination"
 
-handleInsert :: (Integral a, MonadHandler m) => MigrationRoutes 
+
+
+handleInsert :: (MonadHandler m) => MigrationRoutes 
                                       -> String 
                                       -> AcidState (EventState InsertManyTVSimpleImpulse) 
                                       -> (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime)
-                                      -> a 
+                                      -> TVKey
                                       -> [TVNoKey] 
                                       -> m (EventResult InsertManyTVSimpleImpulse)
-handleInsert master stKey state dKey pidKey tvSet = do
-  res <- update' state (InsertManyTVSimpleImpulse (ImpulseKey . toInteger $ pidKey) (S.fromList tvSet))
-  eSetSize <- query' state (GetTVSimpleImpulseSize (ImpulseKey . toInteger $ pidKey))
+handleInsert master stKey state dKey key tvSet = do
+  res <- update' state (InsertManyTVSimpleImpulse key (S.fromList tvSet))
+  eSetSize <- query' state (GetTVSimpleImpulseSize key)
   liftIO . Prelude.putStrLn . show $ eSetSize
   case eSetSize of 
     Left _ -> do
@@ -187,7 +208,7 @@ handleInsert master stKey state dKey pidKey tvSet = do
     Right setSize -> do
       if (setSize >= 50000)
         then do
-          eBounds <- query' state (GetTVSimpleImpulseTimeBounds (ImpulseKey . toInteger $ pidKey))
+          eBounds <- query' state (GetTVSimpleImpulseTimeBounds key)
           case eBounds of
             (Left _) -> do
               liftIO $ Prelude.putStrLn "Error"
@@ -201,7 +222,7 @@ handleInsert master stKey state dKey pidKey tvSet = do
                 Just Idle -> do
                   liftIO $ atomically $ do
                     writeTVar (stateMap master) (M.insert dKey Uploading sMap)
-                  void $ liftIO . forkIO . void $ uploadState master dKey (s3Conn master) state stKey  fName (toInteger pidKey) 15 1 100
+                  void $ liftIO . forkIO . void $ uploadState master dKey (s3Conn master) state stKey  fName key 15 1 100
                   void $ liftIO $ Prelude.putStrLn "Starting upload"
                   void $ liftIO $ createCheckpoint state
                   sendResponseStatus status201 $ toJSON done
@@ -227,12 +248,12 @@ uploadState :: MigrationRoutes
                               -> AcidState (EventState GetTVSimpleImpulseTimeBounds)
                               -> String
                               -> String
-                              -> Integer
+                              -> TVKey
                               -> Int
                               -> Int
                               -> Int
                               -> IO (Either String ())
-uploadState master dirKey s3Conn state dKey fName pidKey period delta minPeriodicSize = do
+uploadState master dirKey s3Conn state dKey fName key period delta minPeriodicSize = do
   bounds <- query' state (GetTVSimpleImpulseTimeBounds key)
   case bounds of
     (Left _) -> return $ Left "Error retrieving bounds"
@@ -257,10 +278,8 @@ uploadState master dirKey s3Conn state dKey fName pidKey period delta minPeriodi
                         Left _ -> removeState k s
                         Right _ -> return . Right $ ()
             (Right (S3.S3Error _)) -> do
-              uploadState master dirKey s3Conn state dKey fName pidKey period delta minPeriodicSize
+              uploadState master dirKey s3Conn state dKey fName key period delta minPeriodicSize
           return . Right $ ()
-  where
-    key = ImpulseKey . toInteger $ pidKey
 
 
 uploadToS3 :: S3.S3Connection -> String -> String -> String -> L.ByteString -> IO (S3.S3Result ())
@@ -290,9 +309,9 @@ postQueryTimeSeriesR = do
       let eDKey = DK.decodeKey (C.pack key) :: (Either String (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime))
           eState = eDKey >>= (\dKey -> maybeToEither "Failed to lookup key" $ M.lookup dKey migrationMap)
           ePidkey = unKeyPid . DK.getSimpleKey <$> eDKey
-      eRes <- T.sequence $ (\state pidKey ->
-                              query' state (GetTVSimpleImpulseMany (ImpulseKey . toInteger $ pidKey) (ImpulseStart start) (ImpulseEnd end))) <$>
-                                eState <*> ePidkey
+      eRes <- T.sequence $ (\state pidKey key ->
+                              query' state (GetTVSimpleImpulseMany (ImpulseKey key) (ImpulseStart start) (ImpulseEnd end))) <$>
+                                eState <*> ePidkey <*> eDKey
       case eRes of
         Left s -> sendResponseStatus status501 $ toJSON . show $ s
         Right (Left e) -> sendResponseStatus status501 $ toJSON . show $ e
@@ -353,7 +372,7 @@ buildTestImpulseRep is ds = ImpulseRep . S.fromList $ Prelude.zipWith bldFcn is 
 
 
 
-buildTestImpulseKey :: Integer -> TVKey
+buildTestImpulseKey :: (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime) -> TVKey
 buildTestImpulseKey i = ImpulseKey i 
 
 buildTestImpulseStart :: Int -> TVSStart
@@ -369,7 +388,7 @@ buildTestImpulsePeriod = initialImpulsePeriod
 
 
 
-buildTestImpulseSeries :: Integer -> Int -> Int -> [Int] -> [Double] 
+buildTestImpulseSeries :: (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime) -> Int -> Int -> [Int] -> [Double] 
                        -> ImpulseSeries TVKey TVPeriod TVSStart TVSEnd (ImpulseRep (S.Set TVNoKey))
 buildTestImpulseSeries key start end is ds = ImpulseSeries                                 
                                              (buildTestImpulseKey key )                    
@@ -378,7 +397,7 @@ buildTestImpulseSeries key start end is ds = ImpulseSeries
                                              (buildTestImpulseEnd end )
                                              (buildTestImpulseRep is ds)
 
-buildTestImpulseTypeStore ::Integer -> Int -> Int -> [Int] -> [Double] 
+buildTestImpulseTypeStore :: (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime) -> Int -> Int -> [Int] -> [Double] 
                           -> TVSimpleImpulseTypeStore 
 buildTestImpulseTypeStore key start end is ds = TVSimpleImpulseTypeStore 
                                                 (buildTestImpulseSeries key start end is ds)

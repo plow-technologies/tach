@@ -49,5 +49,5 @@ main = do
               impulseState <- openLocalStateFrom stateName emptyStore
               mMap <- newTVarIO (impulseStateMap impulseState dKey)
               sMap <- newTVarIO (M.singleton dKey Idle)
-              warp 3000 (MigrationRoutes "./teststate/" mMap (S.singleton . buildTestImpulseKey $ 299) conn sMap)
+              warp 3000 (MigrationRoutes "./teststate/" mMap (S.singleton . buildTestImpulseKey $ 299) conn sMap "http://cloud.aacs-us.com")
               where impulseStateMap state key = M.singleton key state

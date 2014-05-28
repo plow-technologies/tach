@@ -14,6 +14,8 @@ import Data.ByteString
 -- import Data.Thyme
 import Data.Vector
 import GHC.Generics
+import qualified DirectedKeys.Types as DK
+import Tach.Migration.Types
 --import Data.SafeCopy        ( base, deriveSafeCopy )
 -- | The Acid State instance of anything is that thing suffixed with Store... 'TimeValue' -> 'TimeValueStore'
 -- This prevents confusion later 
@@ -22,7 +24,7 @@ import GHC.Generics
 
 -- | This is a simple impulse valued sequence.  No Compression, No structural change.
 -- Note, the terrible type signature occurs because safecopy hates type synonyms!
-newtype TVSimpleImpulseTypeStore = TVSimpleImpulseTypeStore { unTimeValueStore :: (ImpulseSeries (ImpulseKey Integer) (ImpulsePeriod (Vector Double) Int ) (ImpulseStart Int) (ImpulseEnd Int) (ImpulseRep (Set TVNoKey))) } deriving (Typeable,Generic)
+newtype TVSimpleImpulseTypeStore = TVSimpleImpulseTypeStore { unTimeValueStore :: (ImpulseSeries (ImpulseKey (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime)) (ImpulsePeriod (Vector Double) Int ) (ImpulseStart Int) (ImpulseEnd Int) (ImpulseRep (Set TVNoKey))) } deriving (Typeable,Generic)
 
 
 -- | The ByteString is the filename used to grab the correct TVSimple... Allowing for TS level locks instead of DB level

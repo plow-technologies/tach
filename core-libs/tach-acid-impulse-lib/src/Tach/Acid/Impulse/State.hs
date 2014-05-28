@@ -14,6 +14,9 @@ import Tach.Impulse.Types.Impulse
 import qualified Data.Set as S
 import qualified Data.IntMap as M
 import qualified Data.Vector as V
+import qualified DirectedKeys as DK
+import qualified DirectedKeys.Types as DK
+import Tach.Migration.Types
 
 
 
@@ -23,7 +26,7 @@ import qualified Data.Vector as V
 
 
 initialImpulseKey :: TVKey
-initialImpulseKey = ImpulseKey 0
+initialImpulseKey = ImpulseKey (DK.DKeyRaw (KeyPid 0) (KeySource "") (KeyDestination "") (KeyTime 0))
 
 initialImpulseStart :: TVSStart -- ImpulseStart Integer
 initialImpulseStart       = ImpulseStart 0

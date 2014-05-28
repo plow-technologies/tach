@@ -1,5 +1,5 @@
 Name:                   tach-impulse-series-types
-Version:                0.1.8
+Version:                0.1.9
 Author:                 Scott Murphy <scottmurphy09@gmail.com>
 Maintainer:             Scott Murphy <scottmurphy09@gmail.com>
 License:                BSD3
@@ -26,6 +26,9 @@ Library
 --                      , thyme == 0.3.1.1
                       , vector == 0.10.9.1
                       , containers == 0.5.0.0
+                      , directed-keys == 0.1.2
+                      , tach-migration-types == 0.2.0
+
 
 Test-Suite spec         
   Type:                 exitcode-stdio-1.0

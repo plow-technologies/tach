@@ -6,7 +6,11 @@ import Data.Typeable
 import Tach.Impulse.Types.Impulse 
 import Data.Typeable (Typeable)
 import Data.Vector
-type TVKey = ImpulseKey Integer
+import Tach.Migration.Types
+import qualified DirectedKeys as DK
+import qualified DirectedKeys.Types as DK
+
+type TVKey = ImpulseKey (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime)
 type TVTypeOfTime = Int
 type TVParameterType = Vector Double
 type TVPeriod  = ImpulsePeriod TVParameterType TVTypeOfTime 

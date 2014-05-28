@@ -17,8 +17,19 @@ import Tach.Impulse.Types.Impulse
 -- import GHC.Generics
 import Data.SafeCopy        ( base, deriveSafeCopy )
 
+import qualified DirectedKeys.Types as DK
+import Tach.Migration.Types
+
 
 -- Safe Copy Derivations for types we depend on
+$(deriveSafeCopy 0 'base ''DK.DirectedKeyRaw)
+
+
+$(deriveSafeCopy 0 'base ''KeyTime)
+$(deriveSafeCopy 0 'base ''KeyPid)
+$(deriveSafeCopy 0 'base ''KeySource)
+$(deriveSafeCopy 0 'base ''KeyDestination)
+
 $(deriveSafeCopy 0 'base ''ImpulseKey)
 $(deriveSafeCopy 0 'base ''ImpulseStart)
 $(deriveSafeCopy 0 'base ''ImpulseEnd)
