@@ -270,6 +270,7 @@ uploadState master dirKey s3Conn state dKey fName key period delta minPeriodicSi
   case bounds of
     (Left _) -> return $ Left "Error retrieving bounds"
     (Right (lower,upper)) -> do
+      Prelude.putStrLn (" Upper " ++ (show . unEnd $ upper) ++ " lower " ++ (show . unStart $ lower))
       eSet <- query' state (GetTVSimpleImpulseMany key lower upper)
       case eSet of
         Left _ -> return $ Left "Error retrieving set"
@@ -292,7 +293,7 @@ uploadState master dirKey s3Conn state dKey fName key period delta minPeriodicSi
                           Prelude.putStrLn "NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT  -------------------------------------------//////////////////////0000000000000"
                           removeState k s
                         Right _ -> do
-                          Prelude.putStrLn "DELETED //////////////////////////////***************************************\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"
+                          Prelude.putStrLn "DELETED //////////////////////////////***************************************\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"
                           return . Right $ ()
             (Right (S3.S3Error _)) -> do
               uploadState master dirKey s3Conn state dKey fName key period delta minPeriodicSize

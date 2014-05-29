@@ -61,7 +61,7 @@ insertTVSimpleImpulse tk d = do
   st@(TVSimpleImpulseTypeStore (ImpulseSeries {impulseSeriesKey = k})) <- get 
   case st of 
     _ 
-      | k == tk -> put st' >> (return . Right $ SuccessValue . LB.toStrict . encode . object $ ["setSize" .= (sz)])
+      | k == tk -> put st'' >> (return . Right $ SuccessValue . LB.toStrict . encode . object $ ["setSize" .= (sz)])
       | otherwise -> return . Left $ ErrorValue ErrorIncorrectKey 
      where
       st' =   (over _unTimeValueStore (insertTimeValue) st )
@@ -84,7 +84,7 @@ insertManyTVSimpleImpulse tk ds = do
       mx = findMax ds
   case st of 
     _ 
-      | k == tk -> put st' >> (return . Right $ SuccessValue . LB.toStrict .encode . object $ ["setSize" .= (sz)])
+      | k == tk -> put st'' >> (return . Right $ SuccessValue . LB.toStrict .encode . object $ ["setSize" .= (sz)])
       | otherwise -> return . Left $ ErrorValue ErrorIncorrectKey
      where
       st' =  over _unTimeValueStore (insertTimeValues) st
