@@ -45,7 +45,7 @@ import Data.Wavelets.Construction
 import Tach.Migration.Types
 
 import Data.Acid.Cell
-import Tach.Migration.Routes.Acid
+import Tach.Acid.Impulse.Cruds
 import Tach.Migration.Routes.Types
 
 getKeyFcn :: TVSimpleImpulseTypeStore
@@ -53,10 +53,10 @@ getKeyFcn :: TVSimpleImpulseTypeStore
 getKeyFcn = unKey . impulseSeriesKey . unTimeValueStore
 
 defK ::  DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime
-defK  = (DK.DKeyRaw { getSimpleKey = KeyPid 0
-                        , getSource = KeySource $ "onping.aacs-us.com"
-                        , getDest = KeyDestination "onping.aacs-us.com"                        
-                        , getDateTime = KeyTime 1398048132 })
+defK  = (DK.DKeyRaw { getSimpleKey = KeyPid 299
+                        , getSource = KeySource $ "www.aacs-us.com"
+                        , getDest = KeyDestination "http://cloud.aacs-us.com"                        
+                        , getDateTime = KeyTime 0 })-- 1398048132 })
 
 tvSimpleStoreCellKey :: CellKey KeyPid KeySource KeyDestination KeyTime TVSimpleImpulseTypeStore
 tvSimpleStoreCellKey = CellKey { getKey = getKeyFcn 
@@ -79,8 +79,7 @@ decodeDirectedKeyRaw akey =  case (DK.decodeKey $ TE.encodeUtf8 $ akey) of
 
 
 initTVSimpleStore :: TVSimpleImpulseTypeStore
-initTVSimpleStore = TVSimpleImpulseTypeStore (ImpulseSeries (ImpulseKey (DK.DKeyRaw (KeyPid 0) (KeySource "") (KeyDestination "") (KeyTime 0))) (IPeriodParameterized (V.empty)) (ImpulseStart 0) (ImpulseEnd 0) (ImpulseRep S.empty))
-
+initTVSimpleStore = TVSimpleImpulseTypeStore (ImpulseSeries (ImpulseKey defK) (IPeriodParameterized (V.empty)) (ImpulseStart 0) (ImpulseEnd 0) (ImpulseRep S.empty))
 
 
 

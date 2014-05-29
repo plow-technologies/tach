@@ -45,10 +45,11 @@ main = do
     (Right conf) -> do
       runServer conf
       where runServer conn = do
-              let dKey = buildIncomingKey (KeyPid 9) (KeySource "www.aacs-us.com") (KeyDestination "http://cloud.aacs-us.com") (KeyTime 0)
+              let dKey = buildIncomingKey (KeyPid 299) (KeySource "www.aacs-us.com") (KeyDestination "http://cloud.aacs-us.com") (KeyTime 0)
                   stateName = C.unpack . DK.parseFilename . DK.encodeKey $ dKey
-              impulseState <- openLocalStateFrom stateName emptyStore
-              mMap <- newTVarIO (impulseStateMap impulseState dKey)
               sMap <- newTVarIO (M.singleton dKey Idle)
-              warp 3000 (MigrationRoutes "./teststate/" mMap (S.singleton . buildTestImpulseKey $ (DK.DKeyRaw (KeyPid 0) (KeySource "www.aacs-us.com") (KeyDestination "http://cloud.aacs-us.com") (KeyTime 0))) conn sMap "http://cloud.aacs-us.com")
+              cells <- initializeTVSimpleImpulseTypeStoreAC "states"
+              st <- insertTVSimpleImpulseTypeStoreAC cells initTVSimpleStore
+              updateTVSimpleImpulseTypeStoreAC cells st initTVSimpleStore
+              warp 3000 (MigrationRoutes cells (S.singleton . buildTestImpulseKey $ dKey) conn sMap "http://cloud.aacs-us.com")
               where impulseStateMap state key = M.singleton key state

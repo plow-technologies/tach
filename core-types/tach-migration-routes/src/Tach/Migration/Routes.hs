@@ -82,20 +82,20 @@ tempS3Conn = S3.S3Connection S3.defaultS3Host "" ""
 
 -- | Used for importing routes into other libraries
 --   ONLY
-migrationRoutesTransport :: IO MigrationRoutes
-migrationRoutesTransport = do
-  mMap <- newTVarIO M.empty  :: IO (TVar (M.Map IncomingKey (AcidState TVSimpleImpulseTypeStore)))
-  sMap <- newTVarIO (M.empty)
-  return $ MigrationRoutes "" mMap (S.empty) tempS3Conn sMap "http://cloud.aacs-us.com"
+-- migrationRoutesTransport :: IO MigrationRoutes
+-- migrationRoutesTransport = do
+--   mMap <- newTVarIO M.empty  :: IO (TVar (M.Map IncomingKey (AcidState TVSimpleImpulseTypeStore)))
+--   sMap <- newTVarIO (M.empty)
+--   return $ MigrationRoutes "" mMap (S.empty) tempS3Conn sMap "http://cloud.aacs-us.com"
 
-testServer = do
-  let dKey = buildIncomingKey (KeyPid 299) (KeySource "www.aacs-us.com") (KeyDestination "http://cloud.aacs-us.com") (KeyTime 0)
-      stateName = C.unpack . DK.parseFilename . DK.encodeKey $ dKey
-  impulseState <- openLocalStateFrom stateName emptyStore
-  mMap <- newTVarIO (impulseStateMap impulseState dKey)
-  sMap <- newTVarIO (M.singleton dKey Idle)
-  warp 3000 (MigrationRoutes "./teststate/" mMap (S.singleton . buildTestImpulseKey $  (DK.DKeyRaw (KeyPid 299) (KeySource "") (KeyDestination "") (KeyTime 0))) tempS3Conn sMap "http://cloud.aacs-us.com")
-  where impulseStateMap state key = M.singleton key state
+-- testServer = do
+--   let dKey = buildIncomingKey (KeyPid 299) (KeySource "www.aacs-us.com") (KeyDestination "http://cloud.aacs-us.com") (KeyTime 0)
+--       stateName = C.unpack . DK.parseFilename . DK.encodeKey $ dKey
+--   impulseState <- openLocalStateFrom stateName emptyStore
+--   mMap <- newTVarIO (impulseStateMap impulseState dKey)
+--   sMap <- newTVarIO (M.singleton dKey Idle)
+--   warp 3000 (MigrationRoutes "./teststate/" mMap (S.singleton . buildTestImpulseKey $  (DK.DKeyRaw (KeyPid 299) (KeySource "") (KeyDestination "") (KeyTime 0))) tempS3Conn sMap "http://cloud.aacs-us.com")
+--   where impulseStateMap state key = M.singleton key state
 
 listTest = do
   impulseState <- openLocalStateFrom "teststate" emptyStore
@@ -120,10 +120,10 @@ getHomeR = defaultLayout [whamlet|Simple API|]
 getListDataR :: String -> Handler Value
 getListDataR stKey = do
   master <- getYesod
-  migrationMap <- liftIO $ readTVarIO (migrationRoutesAcidMap master)
-  let eDKey = DK.decodeKey (C.pack stKey) :: (Either String (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime))
-      eState = eDKey >>= (\dKey -> maybeToEither "Failed to lookup key" $ M.lookup dKey migrationMap)
+  let acidCell = (migrationRoutesAcidCell master)
+      eDKey = DK.decodeKey (C.pack stKey) :: (Either String (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime))
       ePidkey = unKeyPid . DK.getSimpleKey <$> eDKey
+  eState <- T.sequence $ (\dKey -> liftIO $ attemptLookupInsert acidCell $ buildKeyImpulseStore dKey) <$> eDKey
   eRes <- T.sequence $ (\state pidKey key ->
                           query' state (GetTVSimpleImpulseMany (ImpulseKey key) (ImpulseStart (-5879536533031178240)) (ImpulseEnd 5364650883968821760))) <$>
                             eState <*> ePidkey <*> eDKey
@@ -137,14 +137,15 @@ getListDataR stKey = do
 getKillNodeR :: Handler Value
 getKillNodeR = do
   master <- getYesod
-  migrationMap <- liftIO $ readTVarIO (migrationRoutesAcidMap master)
-  let migrationElems = M.elems migrationMap
-  let migrationKeys = M.keys migrationMap
-  _ <- liftIO $ mapM createCheckpoint migrationElems
-  _ <- liftIO $ mapM createArchive migrationElems
-  _ <- liftIO $ mapM closeAcidState migrationElems
-  directories <- liftIO $ mapM (ST.getDirectory . elemToPath) migrationKeys
-  _ <- liftIO $ mapM ST.remove directories
+  let acidCell = (migrationRoutesAcidCell master)
+  liftIO $ createCheckpointAndCloseTVSimpleImpulseTypeStoreAC acidCell
+  --     migrationElems = M.elems migrationMap
+  --     migrationKeys = M.keys migrationMap
+  -- _ <- liftIO $ mapM createCheckpoint migrationElems
+  -- _ <- liftIO $ mapM createArchive migrationElems
+  -- _ <- liftIO $ mapM closeAcidState migrationElems
+  -- directories <- liftIO $ mapM (ST.getDirectory . elemToPath) migrationKeys
+  -- _ <- liftIO $ mapM ST.remove directories
   return . toJSON $ killing
   where killing :: Text
         killing = "Killing"
@@ -157,30 +158,41 @@ postReceiveTimeSeriesR :: String -> Handler Value
 postReceiveTimeSeriesR stKey = do
   master <- getYesod
   liftIO $ Prelude.putStrLn stKey
-  migrationMap <- liftIO $ readTVarIO (migrationRoutesAcidMap master)
-  let eDKey = DK.decodeKey (C.pack stKey) :: (Either String (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime))
-      eState :: Either String (AcidState TVSimpleImpulseTypeStore)
-      eState = eDKey >>= (\dKey -> maybeToEither "Failed to lookup key" $ M.lookup dKey migrationMap)
-      ePidKey = unKeyPid . DK.getSimpleKey <$> eDKey
+  let acidCell = (migrationRoutesAcidCell master)
+      eDKey@(Right (DK.DKeyRaw (KeyPid p) (KeySource s) (KeyDestination d) (KeyTime t))) = DK.decodeKey (C.pack stKey) :: (Either String (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime))
+  liftIO . Prelude.putStrLn $ ( (show p) ++ " " ++  (UTF.toString s) ++ " " ++ (UTF.toString d) ++ " " ++ (show t) )
+  eState <- T.sequence $ (\dKey -> liftIO $ attemptLookupInsert acidCell (buildKeyImpulseStore dKey)) <$> eDKey
+  let ePidKey = unKeyPid . DK.getSimpleKey <$> eDKey
   eTsInfo <- resultToEither <$> parseJsonBody :: Handler (Either String [TVNoKey]) -- Get the post body
   case eDKey of
-    Left err -> sendResponseStatus status501 $ toJSON err
+    Left err -> do
+      sendResponseStatus status501 $ toJSON err
+      return ()
     Right dKey -> do
       case eState of
         Left err -> do
-          undefined
+          sendResponseStatus status501 $ toJSON err
+          return ()
         Right state -> do
-          undefined
-  rslt <- T.sequence $ (saveAndUploadState master stKey ) <$> eState <*> eDKey <*> eTsInfo
+          T.sequence $ (saveAndUploadState master stKey ) <$> eState <*> eDKey <*> eTsInfo
+          return ()
   sendResponseStatus status200 $ toJSON end
   where end :: String
         end = "Ended"
 
+
+saveAndUploadState :: MonadHandler m => MigrationRoutes
+     -> String
+     -> AcidState
+          (EventState InsertManyTVSimpleImpulse)
+     -> DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime
+     -> [TVNoKey]
+     -> m (EventResult InsertManyTVSimpleImpulse)
 saveAndUploadState master stKey state dKey tvNkList = do
   let destination = (migrationRoutesDestination master)
   case dKey of
     key@(DK.DKeyRaw {getDest = destination}) -> do
-      handleInsert master stKey state dKey (ImpulseKey key) tvNkList
+      handleInsert master stKey state (ImpulseKey key) tvNkList
     otherwise -> do
       sendResponseStatus status500 $ toJSON incorrectDestination
       undefined
@@ -192,14 +204,14 @@ saveAndUploadState master stKey state dKey tvNkList = do
 handleInsert :: (MonadHandler m) => MigrationRoutes 
                                       -> String 
                                       -> AcidState (EventState InsertManyTVSimpleImpulse) 
-                                      -> (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime)
                                       -> TVKey
                                       -> [TVNoKey] 
                                       -> m (EventResult InsertManyTVSimpleImpulse)
-handleInsert master stKey state dKey key tvSet = do
+handleInsert master stKey state key@(ImpulseKey dKey) tvSet = do
   res <- update' state (InsertManyTVSimpleImpulse key (S.fromList tvSet))
   eSetSize <- query' state (GetTVSimpleImpulseSize key)
   liftIO . Prelude.putStrLn . show $ eSetSize
+  liftIO . Prelude.putStrLn . show $ res
   case eSetSize of 
     Left _ -> do
       void $ liftIO $ Prelude.putStrLn "NOT STARTING UPLOAD failed?"
@@ -274,9 +286,14 @@ uploadState master dirKey s3Conn state dKey fName key period delta minPeriodicSi
               return $ Right ()
               where removeState k s = do
                       deleteResult <- update' state (DeleteManyTVSimpleImpulse k s)
+                      createCheckpoint state
                       case deleteResult of
-                        Left _ -> removeState k s
-                        Right _ -> return . Right $ ()
+                        Left _ -> do
+                          Prelude.putStrLn "NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT  -------------------------------------------//////////////////////0000000000000"
+                          removeState k s
+                        Right _ -> do
+                          Prelude.putStrLn "DELETED //////////////////////////////***************************************\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"
+                          return . Right $ ()
             (Right (S3.S3Error _)) -> do
               uploadState master dirKey s3Conn state dKey fName key period delta minPeriodicSize
           return . Right $ ()
@@ -305,10 +322,10 @@ postQueryTimeSeriesR = do
     Left err -> sendResponseStatus status501 $ toJSON err
     Right (TimeSeriesQuery key start end period delta) -> do
       master <- getYesod
-      migrationMap <- liftIO $ readTVarIO (migrationRoutesAcidMap master)
-      let eDKey = DK.decodeKey (C.pack key) :: (Either String (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime))
-          eState = eDKey >>= (\dKey -> maybeToEither "Failed to lookup key" $ M.lookup dKey migrationMap)
-          ePidkey = unKeyPid . DK.getSimpleKey <$> eDKey
+      let acidCell = (migrationRoutesAcidCell master)
+          eDKey = DK.decodeKey (C.pack key) :: (Either String (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime))
+      eState <- T.sequence $ (\key -> liftIO $ attemptLookupInsert acidCell $ buildKeyImpulseStore key ) <$> eDKey
+      let ePidkey = unKeyPid . DK.getSimpleKey <$> eDKey
       eRes <- T.sequence $ (\state pidKey key ->
                               query' state (GetTVSimpleImpulseMany (ImpulseKey key) (ImpulseStart start) (ImpulseEnd end))) <$>
                                 eState <*> ePidkey <*> eDKey
@@ -329,7 +346,15 @@ postQueryTimeSeriesR = do
                       where timeDiff = (tvNkSimpleTime currItem - tvNkSimpleTime lastItem)
 
 
-
+attemptLookupInsert cell key = do
+  mRes <- getTVSimpleImpulseTypeStoreAC cell key
+  case mRes of
+    Just res -> return res
+    Nothing -> do
+      fail "WHAT THE HELL"
+      liftIO . Prelude.putStrLn $ "WHAT THE EWHATHSGHG"
+      insertTVSimpleImpulseTypeStoreAC cell key
+      attemptLookupInsert cell key
 
 
 

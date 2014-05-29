@@ -29,7 +29,7 @@ import Data.SafeCopy        ( base, deriveSafeCopy )
 
 -- Lens Specific 
 import Tach.Acid.Impulse.Lens
-import Control.Lens (over,views, (^.) )
+import Control.Lens (over,views, (^.), set, view)
 
 -- Impulse Specific 
 -- import Tach.Acid.Impulse.State 
@@ -64,21 +64,14 @@ insertTVSimpleImpulse tk d = do
       | k == tk -> put st' >> (return . Right $ SuccessValue . LB.toStrict . encode . object $ ["setSize" .= (sz)])
       | otherwise -> return . Left $ ErrorValue ErrorIncorrectKey 
      where
-      st' =   (over _unTimeValueStore (insertIfNewer.insertIfOlder.insertTimeValue) st )
+      st' =   (over _unTimeValueStore (insertTimeValue) st )
       sz  = views _TVSimpleImpulseRep size st'
+      newSet = (view (_unTimeValueStore . _impulseSeriesRep . _unRep) st')
+      st'' = (over _unTimeValueStore (updateLower . updateHigher) st')
       appendData = (\s -> (d `insert` s) )
       insertTimeValue = (over (_impulseSeriesRep . _unRep ) appendData)
-      insertIfOlder = (over (_impulseSeriesStart . _unStart) useOlder )      
-      insertIfNewer = (over (_impulseSeriesEnd . _unEnd) useNewer )      
-      useOlder i = case (d ^. _tvNkSimpleTime) of 
-                  j 
-                       | i <= j -> i -- i still lower bound
-                       | otherwise -> j -- replace lower bound
-          
-      useNewer i = case (d ^. _tvNkSimpleTime) of 
-                  j 
-                       | i >= j -> i -- i still lower bound
-                       | otherwise -> j -- replace lower bound
+      updateHigher = (set (_impulseSeriesEnd . _unEnd) (tvNkSimpleTime $ findMax newSet) )
+      updateLower = (set (_impulseSeriesStart . _unStart) (tvNkSimpleTime $ findMin newSet) )
           
                                                             
       
@@ -94,20 +87,13 @@ insertManyTVSimpleImpulse tk ds = do
       | k == tk -> put st' >> (return . Right $ SuccessValue . LB.toStrict .encode . object $ ["setSize" .= (sz)])
       | otherwise -> return . Left $ ErrorValue ErrorIncorrectKey
      where
-      st' =  over _unTimeValueStore (insertIfNewer . insertIfOlder . insertTimeValues) st
+      st' =  over _unTimeValueStore (insertTimeValues) st
       sz  = views _TVSimpleImpulseRep size st'
+      newSet = (view (_unTimeValueStore . _impulseSeriesRep . _unRep) st')
+      st'' = (over _unTimeValueStore (updateLower . updateHigher) st')
       appendData = (\s -> ds `union` s)
       insertTimeValues = (over (_impulseSeriesRep . _unRep ) appendData)
-      insertIfOlder = (over (_impulseSeriesStart . _unStart) useOlder )      
-      insertIfNewer = (over (_impulseSeriesEnd . _unEnd) useNewer )      
-      useOlder i = case (mn ^. _tvNkSimpleTime) of 
-                  j 
-                       | i <= j -> i -- i still lower bound
-                       | otherwise -> j -- replace lower bound
-          
-      useNewer i = case (mx ^. _tvNkSimpleTime) of 
-                  j 
-                       | i >= j -> i -- i still lower bound
-                       | otherwise -> j -- replace lower bound
+      updateHigher = (set (_impulseSeriesEnd . _unEnd) (tvNkSimpleTime $ findMax newSet) )
+      updateLower = (set (_impulseSeriesStart . _unStart) (tvNkSimpleTime $ findMin newSet) )
       
 
