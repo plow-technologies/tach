@@ -9,6 +9,7 @@ instance FromJSON TVNoKey where
   parseJSON (Object s) = TVNoKey <$>
               s .: "time"      <*>
               s .: "val" 
+  parseJSON _ = fail "Rule: Expected Object TVNoKey received other"
 instance ToJSON TVNoKey where
   toJSON TVNoKey{..} = object [  "time" .= tvNkSimpleTime
                                 ,"val"  .= tvNkSimpleValue

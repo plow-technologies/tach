@@ -1,17 +1,17 @@
 {-# LANGUAGE QuasiQuotes, TemplateHaskell, TypeFamilies, RecordWildCards, OverloadedStrings, DeriveGeneric, GeneralizedNewtypeDeriving #-}
 module Tach.Periodic where
 
+import Prelude hiding (foldl)
 import Tach.Periodic.Internal
-import Data.Either
-import Data.List
-import qualified Data.Vector as V
-import Safe
 import System.Random
 import Control.Applicative
 import GHC.Generics
+import Data.Maybe
+import qualified Data.Sequence as S
+import qualified Data.Foldable as F
 
-newtype PeriodicData a = PeriodicData  { unPeriodicData :: V.Vector a } deriving (Eq, Show, Generic)
-newtype APeriodicData a = APeriodicData { unAPeriodicData :: V.Vector a } deriving (Eq, Show, Generic)
+newtype PeriodicData a = PeriodicData  { unPeriodicData :: S.Seq a } deriving (Eq, Show, Generic)
+newtype APeriodicData a = APeriodicData { unAPeriodicData :: S.Seq a } deriving (Eq, Show, Generic)
 data TVData a = TVPeriodic (PeriodicData a) | TVAPeriodic (APeriodicData a) deriving (Eq, Show, Generic)
 
 data PeriodicFolding a = PeriodicFolding {
@@ -32,61 +32,100 @@ tvDataToEither (TVAPeriodic x) = Left x
 testList :: [Double]
 testList = aperiodicTimeData 515.0 1000.0 100
 
-combineAperiodic :: [TVData a] -> [TVData a]
-combineAperiodic = foldl' combineAperiodicFold []
+seqToList :: S.Seq a -> [a]
+seqToList = (F.foldr' (\item list -> item:list) [])
 
-classifyData :: (Num a, Ord a) => a -> a -> Int -> (b -> a) -> [b] -> [TVData b]
-classifyData  period delta minPeriodicSize toNumFunc list = combineAperiodic . (removePeriodicBelow minPeriodicSize) $ classifyPeriodic period delta toNumFunc list
+combineAperiodic :: S.Seq (TVData a) -> S.Seq (TVData a)
+combineAperiodic = F.foldl' combineAperiodicFold S.empty
 
-removePeriodicBelow :: Int -> [TVData a] -> [TVData a]
-removePeriodicBelow minSize list = map (setAperiodicBelow minSize)  list
+classifyData :: (Num a, Ord a) => a -> a -> Int -> (b -> a) -> [b] -> ([TVData b])
+classifyData  period delta minPeriodicSize toNumFunc list = seqToList . combineAperiodic . (removePeriodicBelow minPeriodicSize) $ classifyPeriodic period delta toNumFunc (S.fromList list)
+
+removePeriodicBelow :: Int -> S.Seq (TVData a) -> S.Seq (TVData a)
+removePeriodicBelow minSize list = (setAperiodicBelow minSize) <$> list
 
 setAperiodicBelow :: Int -> (TVData a) -> (TVData a)
 setAperiodicBelow minSize val@(TVPeriodic (PeriodicData periodic)) =
-  if ((V.length periodic) < minSize)
+  if ((S.length periodic) < minSize)
     then TVAPeriodic $ APeriodicData periodic
     else val
 setAperiodicBelow _ b = b
 
 -- Appends the TVData to the last element of the TVData list if both are aperiodic
-combineAperiodicFold :: [TVData a] -> TVData a -> [TVData a]
+combineAperiodicFold :: S.Seq (TVData a) -> TVData a -> S.Seq (TVData a)
 combineAperiodicFold list item = 
-  let first = lastMay list
+  let first = lastMaySeq list
   in case first of
-    Nothing -> [item]
+    Nothing -> S.singleton item
     (Just (TVAPeriodic (APeriodicData periodicList))) ->
       case item of
-        (TVAPeriodic (APeriodicData a)) ->
-          (init list) ++ [(TVAPeriodic $ APeriodicData (periodicList V.++ a))]
-        _ -> list ++ [item]
-    (Just (TVPeriodic (PeriodicData _))) -> list  ++ [item]
+        (TVAPeriodic (APeriodicData el)) ->
+          (initSeq list) S.|> (TVAPeriodic $ APeriodicData (periodicList S.>< el))
+        _ -> list S.|> item
+    (Just (TVPeriodic (PeriodicData _))) -> list  S.|> item
 
-classifyPeriodic :: (Num a, Ord a) => a -> a -> (b -> a) -> [b] -> [TVData b]
-classifyPeriodic period delta toNumFunc list = foldl' (takePeriodic period delta toNumFunc) [] list
+classifyPeriodic :: (Num a, Ord a) => a -> a -> (b -> a) -> S.Seq b -> S.Seq (TVData b)
+classifyPeriodic period delta toNumFunc list = F.foldl' (takePeriodic period delta toNumFunc) S.empty list
 
 -- | The function that folds over a list and looks for any matches in a period
-takePeriodic :: (Num a, Ord a) => a -> a -> (b -> a) -> [TVData b] -> b -> [TVData b]
+takePeriodic :: (Num a, Ord a) => a -> a -> (b -> a) -> S.Seq (TVData b) -> b ->  S.Seq (TVData b)
 takePeriodic period delta toNumFunc old current = 
   let maxPeriod = period + delta
       minPeriod = period - delta
-      mLast = lastMay old
+      mLast = lastMaySeq old
   in case mLast of
     Nothing ->
-      [TVAPeriodic $ APeriodicData (V.singleton current)]
+      S.singleton $ TVAPeriodic $ APeriodicData (S.singleton current)
     (Just (TVPeriodic (PeriodicData periodData))) ->
-      let firstVal = V.head periodData
-          size = V.length periodData
+      let firstVal = headSeq periodData
           difference = abs $ (toNumFunc current) - (toNumFunc firstVal)
       in if ((difference <= maxPeriod) && (difference >= minPeriod))
-        then ((init old) ++ [(TVPeriodic . PeriodicData $ V.snoc  periodData current)])
-        else ((old) ++ [(TVAPeriodic $ APeriodicData (V.singleton current))])
+        then ((initSeq old) S.|> (TVPeriodic . PeriodicData $  periodData S.|> current))
+        else ((old) S.|> (TVAPeriodic $ APeriodicData (S.singleton current)))
     (Just (TVAPeriodic (APeriodicData aperiodicData))) -> 
-      let lastVal = V.last aperiodicData
+      let lastVal = lastSeq aperiodicData
           difference = abs $ (toNumFunc current) - (toNumFunc lastVal)
       in if ((difference <= maxPeriod) && (difference >= minPeriod))
-        then ((init old) ++ [(TVPeriodic . PeriodicData $ V.snoc  aperiodicData current)])
-        else (old ++ [(TVAPeriodic $ APeriodicData (V.singleton current))])
+        then ((initSeq old) S.|> (TVPeriodic . PeriodicData $ aperiodicData S.|> current))
+        else (old S.|> (TVAPeriodic $ APeriodicData (S.singleton current)))
 
+headSeq :: S.Seq a -> a
+headSeq = fromJust . headMaySeq
+
+headMaySeq :: S.Seq a -> Maybe a
+headMaySeq aSeq = 
+  if (len >= 1)
+    then
+      Just $ S.index aSeq 0
+    else
+      Nothing
+  where len = S.length aSeq
+
+initSeq :: S.Seq a -> S.Seq a
+initSeq aSeq = 
+  if (len >= 1)
+    then
+      if (len == 1)
+        then
+          aSeq
+        else
+          S.take (len - 1) aSeq
+    else
+      S.empty
+  where len = S.length aSeq
+
+
+lastSeq :: S.Seq a -> a
+lastSeq = fromJust . lastMaySeq
+
+lastMaySeq :: S.Seq a -> Maybe a
+lastMaySeq aSeq = 
+  if (len >= 1)
+    then
+      Just $ S.index aSeq (len - 1)
+    else
+      Nothing
+  where len = S.length aSeq
 
 periodStart :: Double -> Int -> Int -> [Int]
 periodStart start count period = take count [(round start) + (x*period) | x <- [0..]]
@@ -131,11 +170,11 @@ randomData (start,end) = do
     _
       | randomChoice <= 5 -> do --Get a period with 15 second intervals
           let xs = linSpace start end (round ((end - start)/15))
-          return . TVPeriodic . PeriodicData . V.fromList $ xs
+          return . TVPeriodic . PeriodicData . S.fromList $ xs
       | otherwise -> do
         randomCount <- randomRIO ((end - start)/15, (end - start)/200)
         let xs = aperiodicTimeData start end (round randomCount)
-        return . TVAPeriodic . APeriodicData . V.fromList $ xs
+        return . TVAPeriodic . APeriodicData . S.fromList $ xs
 
 genRandomData :: (Double,Double) -> (Double, Double) -> IO [(TVData Double)]
 genRandomData (start,end) (minStep,maxStep) = do
@@ -144,22 +183,22 @@ genRandomData (start,end) (minStep,maxStep) = do
   return . removeEmptyRandoms $ chunkedData
 
 removeTVData :: (Num a, Ord a) => [TVData a] -> [a]
-removeTVData list = foldl' removeTVDataFold [] list
+removeTVData list = F.foldl' removeTVDataFold [] list
 
 removeTVDataFold :: (Num a, Ord a) => [a] -> TVData a -> [a]
-removeTVDataFold list item =list ++ (V.toList . unTVData $ item)
+removeTVDataFold list item =list ++ (seqToList . unTVData $ item)
 
 
-unTVData :: (Num a, Ord a) => TVData a -> V.Vector a
+unTVData :: (Num a, Ord a) => TVData a -> S.Seq a
 unTVData (TVPeriodic (PeriodicData c)) = c
 unTVData (TVAPeriodic (APeriodicData b)) = b
 
 removeEmptyRandoms :: [TVData Double] -> [TVData Double]
-removeEmptyRandoms xs = foldl' remEmpty [] xs
+removeEmptyRandoms xs = F.foldl' remEmpty [] xs
 
 
 remEmpty :: [TVData Double] -> TVData Double -> [TVData Double]
 remEmpty ys xs@(TVPeriodic (PeriodicData x)) =
-  if (V.null x) then ys else (ys ++ [xs])
+  if (S.null x) then ys else (ys ++ [xs])
 remEmpty ys xs@(TVAPeriodic (APeriodicData x)) =
-  if (V.null x) then ys else (ys ++ [xs])
+  if (S.null x) then ys else (ys ++ [xs])

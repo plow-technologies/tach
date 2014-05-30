@@ -1,5 +1,5 @@
 Name:                   tach-periodic
-Version:                0.1.2
+Version:                0.1.3
 Author:                 Kevin Cotrone <kevincotrone@gmail.com>
 Maintainer:             Kevin Cotrone <kevincotrone@gmail.com>
 License:                BSD3
@@ -31,6 +31,21 @@ Test-Suite spec
   Main-Is:              Spec.hs
   Build-Depends:        base
                       , hspec
+                      , vector
+                      , random
+                      , containers
+                      , tach-impulse-series-types
+                      , safe
+
+executable bench
+  Default-Language:     Haskell2010
+  Hs-Source-Dirs:       src
+                      , benchmarks
+
+  Main-Is:              Main.hs
+  Ghc-Options:          -Wall
+  Main-Is:              Main.hs
+  Build-Depends:        base
                       , vector
                       , random
                       , containers

@@ -22,7 +22,8 @@ import Data.Acid
 import Data.Acid.Advanced
 import Data.Acid.Local
 import Control.Concurrent
-import Control.Concurrent.STM.TVar
+import Control.Concurrent.STM.TMVar
+import Control.Concurrent.MVar
 import Tach.Migration.Foundation
 import Tach.Migration.Routes.Types
 
@@ -45,11 +46,14 @@ main = do
     (Right conf) -> do
       runServer conf
       where runServer conn = do
-              let dKey = buildIncomingKey (KeyPid 299) (KeySource "www.aacs-us.com") (KeyDestination "http://cloud.aacs-us.com") (KeyTime 0)
-                  stateName = C.unpack . DK.parseFilename . DK.encodeKey $ dKey
-              sMap <- newTVarIO (M.singleton dKey Idle)
+              let dKey = buildIncomingKey (KeyPid 300) (KeySource "www.aacs-us.com") (KeyDestination "http://cloud.aacs-us.com") (KeyTime 0)
+              sMap <- newTMVarIO (M.singleton dKey Idle)
               cells <- initializeTVSimpleImpulseTypeStoreAC "states"
               st <- insertTVSimpleImpulseTypeStoreAC cells initTVSimpleStore
               updateTVSimpleImpulseTypeStoreAC cells st initTVSimpleStore
-              warp 3000 (MigrationRoutes cells (S.singleton . buildTestImpulseKey $ dKey) conn sMap "http://cloud.aacs-us.com")
+              createCheckpoint st
+              wait <- newEmptyMVar
+              forkIO $ warp 3000 (MigrationRoutes cells (S.singleton . buildTestImpulseKey $ dKey) conn sMap "http://cloud.aacs-us.com" wait)
+              res <- takeMVar wait
+              return ()
               where impulseStateMap state key = M.singleton key state

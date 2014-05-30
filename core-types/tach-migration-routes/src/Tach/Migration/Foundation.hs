@@ -53,7 +53,7 @@ getKeyFcn :: TVSimpleImpulseTypeStore
 getKeyFcn = unKey . impulseSeriesKey . unTimeValueStore
 
 defK ::  DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime
-defK  = (DK.DKeyRaw { getSimpleKey = KeyPid 299
+defK  = (DK.DKeyRaw { getSimpleKey = KeyPid 300
                         , getSource = KeySource $ "www.aacs-us.com"
                         , getDest = KeyDestination "http://cloud.aacs-us.com"                        
                         , getDateTime = KeyTime 0 })-- 1398048132 })
@@ -79,8 +79,9 @@ decodeDirectedKeyRaw akey =  case (DK.decodeKey $ TE.encodeUtf8 $ akey) of
 
 
 initTVSimpleStore :: TVSimpleImpulseTypeStore
-initTVSimpleStore = TVSimpleImpulseTypeStore (ImpulseSeries (ImpulseKey defK) (IPeriodParameterized (V.empty)) (ImpulseStart 0) (ImpulseEnd 0) (ImpulseRep S.empty))
+initTVSimpleStore = createTVSimpleStoreFromKey defK
 
-
+createTVSimpleStoreFromKey :: DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime -> TVSimpleImpulseTypeStore
+createTVSimpleStoreFromKey key = TVSimpleImpulseTypeStore (ImpulseSeries (ImpulseKey key) (IPeriodParameterized (V.empty)) (ImpulseStart 0) (ImpulseEnd 0) (ImpulseRep S.empty))
 
 $(makeAcidCell 'tvSimpleStoreCellKey 'initTVSimpleStore  ''TVSimpleImpulseTypeStore)
