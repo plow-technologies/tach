@@ -54,13 +54,13 @@ setAperiodicBelow _ b = b
 -- Appends the TVData to the last element of the TVData list if both are aperiodic
 combineAperiodicFold :: S.Seq (TVData a) -> TVData a -> S.Seq (TVData a)
 combineAperiodicFold list item = 
-  let first = lastMaySeq list
-  in case first of
+  let end = lastMaySeq list
+  in case end of
     Nothing -> S.singleton item
     (Just (TVAPeriodic (APeriodicData periodicList))) ->
       case item of
-        (TVAPeriodic (APeriodicData el)) ->
-          (initSeq list) S.|> (TVAPeriodic $ APeriodicData (periodicList S.>< el))
+        (TVAPeriodic (APeriodicData aSeq)) ->
+          (initSeq list) S.|> (TVAPeriodic $ APeriodicData (periodicList S.>< aSeq))
         _ -> list S.|> item
     (Just (TVPeriodic (PeriodicData _))) -> list  S.|> item
 
@@ -77,7 +77,7 @@ takePeriodic period delta toNumFunc old current =
     Nothing ->
       S.singleton $ TVAPeriodic $ APeriodicData (S.singleton current)
     (Just (TVPeriodic (PeriodicData periodData))) ->
-      let firstVal = headSeq periodData
+      let firstVal = lastSeq periodData
           difference = abs $ (toNumFunc current) - (toNumFunc firstVal)
       in if ((difference <= maxPeriod) && (difference >= minPeriod))
         then ((initSeq old) S.|> (TVPeriodic . PeriodicData $  periodData S.|> current))
@@ -96,7 +96,7 @@ headMaySeq :: S.Seq a -> Maybe a
 headMaySeq aSeq = 
   if (len >= 1)
     then
-      Just $ S.index aSeq 0
+      Just $ S.index aSeq (len - 1)
     else
       Nothing
   where len = S.length aSeq
@@ -107,7 +107,7 @@ initSeq aSeq =
     then
       if (len == 1)
         then
-          aSeq
+          S.empty
         else
           S.take (len - 1) aSeq
     else
