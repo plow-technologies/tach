@@ -23,6 +23,7 @@ import qualified System.File.Tree as ST
 import qualified Network.AWS.S3Simple as S3
 import qualified Data.Vector.Storable as VS
 import qualified Data.Vector as V
+import qualified Data.Sequence as SEQ
 
 -- Acid and file related
 import Data.Acid
@@ -71,6 +72,10 @@ instance Yesod MigrationRoutes
 
 -- instance VS.Storable TVNoKey where
  -- sizeOf x = (sizeOf . tvNkSimpleTime $ x) + (sizeOf . tvNkSimpleValue $ x)
+
+instance (ToJSON a ) => ToJSON (SEQ.Seq a) where
+  toJSON = toJSON . toList
+
 instance (ToJSON a) => ToJSON (WaveletTransform a) where
 instance (ToJSON a) => ToJSON (PeriodicData a) where
 instance (ToJSON a) => ToJSON (APeriodicData a) where
@@ -369,8 +374,8 @@ classifySet period delta minPeriodicSize set = classifyData period delta minPeri
 
 periodicToTransform ::  (PeriodicData TVNoKey) -> (WaveletTransform Double)
 periodicToTransform (PeriodicData periodic) = 
-  let levels = ceiling ( logBase 2 (fromIntegral . V.length $ periodic))
-  in WaveletTransform $ defaultVdwt levels (V.map tvNkSimpleValue periodic)
+  let levels = ceiling ( logBase 2 (fromIntegral . SEQ.length $ periodic))
+  in WaveletTransform $ defaultVdwt levels (toList $ fmap tvNkSimpleValue periodic)
 
 
 
