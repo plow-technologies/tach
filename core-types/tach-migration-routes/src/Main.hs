@@ -1,6 +1,8 @@
-{-# LANGUAGE DeriveDataTypeable, RecordWildCards, OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric, DeriveDataTypeable, RecordWildCards, OverloadedStrings #-}
 module Main where
 
+import GHC.Generics
+import Control.Applicative
 import System.Console.CmdArgs
 import Control.Monad
 import Network.AWS.S3Simple
@@ -17,6 +19,8 @@ import Tach.Migration.Routes
 import Tach.Migration.Types
 import qualified DirectedKeys as DK
 import qualified DirectedKeys.Types as DK
+import Network.Wai.Handler.Warp
+import qualified Filesystem.Path.CurrentOS as OS
 
 -- Acid and file related
 import Data.Acid
@@ -28,9 +32,12 @@ import Control.Concurrent.MVar
 import Tach.Migration.Foundation
 import Tach.Migration.Routes.Types
 import Control.Exception
+import Data.Yaml 
+import Data.Streaming.Network.Internal
 
-data MigrationConfig = MigrationConfig{ 
-   path :: String
+
+data MigrationPath = MigrationPath{ 
+   migrationPath :: String
 } deriving (Data, Typeable, Show, Eq)
 
 --s3Conn :: S3Connection
@@ -39,23 +46,23 @@ data MigrationConfig = MigrationConfig{
 
 main :: IO ()
 main = do
-  args <- cmdArgs $ MigrationConfig "config.yml"
+  args <- cmdArgs $ MigrationPath "config.yml"
+  let fullPath = OS.fromText $ T.pack (migrationPath args)
   putStrLn $ show args
-  file <- BS.readFile $ path args
+  file <- BS.readFile $ migrationPath args
   let eConf =  Y.decodeEither file
   case eConf of
     (Left _) -> putStrLn "Error reading config file"
     (Right conf) -> do
-      runServer conf
-      where runServer conn = do
+      migrationConfig <- readMigrationConfig fullPath
+      runServer conf migrationConfig
+      where runServer conf migrationConf = do
               let dKey = buildIncomingKey (KeyPid 300) (KeySource "www.aacs-us.com") (KeyDestination "http://cloud.aacs-us.com") (KeyTime 0)
-              sMap <- newTMVarIO (M.singleton dKey Idle)
-              cells <- initializeTVSimpleImpulseTypeStoreAC "states"
-              st <- insertTVSimpleImpulseTypeStoreAC cells initTVSimpleStore
-              updateTVSimpleImpulseTypeStoreAC cells st initTVSimpleStore
-              createCheckpoint st
+              cells <- initializeTVSimpleImpulseTypeStoreAC (migrationStatePath migrationConf)
+              resMap <- foldlWithKeyTVSimpleImpulseTypeStoreAC cells (\_ key _ ioStates -> (M.insert key Idle) <$> ioStates) (return M.empty)
+              sMap <- newTMVarIO resMap
               wait <- newEmptyMVar
-              forkIO $ warp 3000 (MigrationRoutes cells (S.singleton . buildTestImpulseKey $ dKey) conn sMap "http://cloud.aacs-us.com" wait)
+              forkIO $ notWarpWarp migrationConf (MigrationRoutes cells S.empty conf sMap "http://cloud.aacs-us.com" wait) wait
               res <- takeMVar wait
               return ()
               where impulseStateMap state key = M.singleton key state
@@ -63,17 +70,39 @@ main = do
 -- createWarp port cells keys conn sMap host wait = do
 --   warp 3000 (MigrationRoutes cells (S.singleton . buildTestImpulseKey $ dKey) conn sMap "http://cloud.aacs-us.com" wait)
 
--- notWarpWarp host port migrationRoutes = do
---  finally (do
---              print )
---          (void $ do
---            print "Closing migration server"
---            let cells = (migrationRoutesAcidCell migrationRoutes)
---            void $ do
---              archiveAndHandleTVSimpleImpulseTypeStoreAC cells
---              createCheckpointAndCloseTVSimpleImpulseTypeStoreAC cells
+notWarpWarp config app wait = do
+  finally (do
+            putStrLn ("Starting migration server" :: String)
+            app <- toWaiApp app
+            void $ startServer app config 
+            res <- takeMVar wait
+            _ <- putMVar wait res
+            return ())
+          (void $ do
+            putStrLn ("Closing migration server" :: String)
+            let cells = (migrationRoutesAcidCell app)
+            void $ do
+              archiveAndHandleTVSimpleImpulseTypeStoreAC cells (\ _ b -> do
+                                                                                          createCheckpoint b
+                                                                                          return b)
+              createCheckpointAndCloseTVSimpleImpulseTypeStoreAC cells
+            )
 
---            app <- toWaiApp migrationRoutes
---            run 3000 app
+startServer app conf = do
+  let warpSettings = (setFdCacheDuration 0) . (setTimeout 60) . (setHost (Host $ T.unpack (migrationHost conf))) . (setPort . migrationPort $ conf) $ defaultSettings
+  runSettings warpSettings app
 
---            )
+
+data MigrationConfig = MigrationConfig { 
+      migrationPort :: Int 
+    , migrationHost :: T.Text
+    , migrationStatePath :: T.Text
+} deriving (Read, Eq, Show, Typeable,Generic)
+
+readMigrationConfig :: OS.FilePath -> IO MigrationConfig
+readMigrationConfig fPath = do
+  fCont <- BS.readFile (OS.encodeString fPath)
+  either (\e -> fail e) (\asc -> return asc) $ decodeEither $ fCont
+
+instance FromJSON MigrationConfig where
+instance ToJSON MigrationConfig where

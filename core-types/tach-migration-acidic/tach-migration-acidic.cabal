@@ -1,5 +1,5 @@
 Name:                   tach-migration-acidic
-Version:                0.2.1
+Version:                0.2.2
 Author:                 Kevin Cotrone <kevincotrone@gmail.com>
 Maintainer:             Kevin Cotrone <kevincotrone@gmail.com>
 License:                BSD3
@@ -24,11 +24,11 @@ Library
   Other-Modules:        Tach.Migration.Acidic.Internal
   Build-Depends:        base >= 4 && < 5
                       , acid-state                == 0.12.2
-                      , safecopy                  == 0.8.4.7569
+                      , safecopy                  == 0.8.3
                       , tach-impulse-series-types == 0.1.10
                       , containers
                       , vector == 0.10.9.1
-                      , bytestring == 0.10.4.0
+                      , bytestring >= 0.10.0.2
                       , directed-keys == 0.2.1
                       , tach-migration-types == 0.2.0
 

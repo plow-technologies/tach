@@ -2,6 +2,8 @@
 module Tach.Migration.Routes.Types where
 
 --General Haskell imports
+import Data.Aeson 
+import Tach.Migration.Instances
 import Control.Concurrent.STM.TMVar
 import Control.Concurrent.MVar
 import GHC.Generics
@@ -56,6 +58,17 @@ data MigrationRoutes = MigrationRoutes {
  ,migrationRoutesDestination :: !String
  ,migrationRoutesWait :: MVar Int
 }
+
+data MigrationTransport = MigrationTransport {
+    key :: Text
+  , tvNkList :: [TVNoKey]
+} deriving (Show, Eq, Generic)
+
+instance ToJSON MigrationTransport where
+instance FromJSON MigrationTransport where
+
+toMigrationTransport src dest time (p,tvnkList) = MigrationTransport (TE.decodeUtf8 $ DK.encodeKey (DK.DKeyRaw (KeyPid p) (KeySource src) (KeyDestination dest) (KeyTime time))) tvnkList
+
 
 data StateStatus = Uploading | Idle
 

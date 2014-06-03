@@ -25,6 +25,8 @@ import qualified Network.AWS.S3SimpleTypes as S3
 import qualified Data.Vector.Storable as VS
 import qualified Data.Vector as V
 import qualified Data.Sequence as SEQ
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as TE
 
 -- Acid and file related
 import Data.Acid
@@ -144,7 +146,9 @@ getKillNodeR :: Handler Value
 getKillNodeR = do
   master <- getYesod
   let acidCell = (migrationRoutesAcidCell master)
-  liftIO $ createCheckpointAndCloseTVSimpleImpulseTypeStoreAC acidCell
+  liftIO $ do
+    createCheckpointAndCloseTVSimpleImpulseTypeStoreAC acidCell
+    archiveAndHandleTVSimpleImpulseTypeStoreAC acidCell (\ _ b -> return b)
   --     migrationElems = M.elems migrationMap
   --     migrationKeys = M.keys migrationMap
   -- _ <- liftIO $ mapM createCheckpoint migrationElems
@@ -153,6 +157,7 @@ getKillNodeR = do
   -- directories <- liftIO $ mapM (ST.getDirectory . elemToPath) migrationKeys
   -- _ <- liftIO $ mapM ST.remove directories
   void . liftIO $ putMVar (migrationRoutesWait master) 0
+  void . liftIO $ tryPutMVar (migrationRoutesWait master) 0
   return . toJSON $ killing
   where killing :: Text
         killing = "Killing"
@@ -170,11 +175,25 @@ postReceiveTimeSeriesR stKey = do
   liftIO . Prelude.putStrLn $ ( (show p) ++ " " ++  (UTF.toString s) ++ " " ++ (UTF.toString d) ++ " " ++ (show t) )
   eState <- T.sequence $ (\dKey -> liftIO $ attemptLookupInsert acidCell dKey (stateMap master)) <$> eDKey
   let ePidKey = unKeyPid . DK.getSimpleKey <$> eDKey
-  eTsInfo <- resultToEither <$> parseJsonBody :: Handler (Either String [TVNoKey]) -- Get the post body
-  res <- T.sequence $ (\state key info -> saveAndUploadState master stKey state key info) <$> eState <*> eDKey <*> eTsInfo
+  eTsInfo <- resultToEither <$> parseJsonBody :: Handler (Either String [MigrationTransport]) -- Get the post body
+  _ <- T.sequence $ (\l -> Control.Monad.mapM_ (updateMigrationTransports master acidCell) l) <$> eTsInfo
+  --res' <- T.sequence $ (\state info -> saveAndUploadState master stKey state info) <$> eState <*> eTsInfo
   sendResponseStatus status200 $ toJSON end
   where end :: String
         end = "Ended"
+
+
+updateMigrationTransports :: MonadHandler m =>
+     MigrationRoutes
+     -> MigrationCell
+     -> MigrationTransport
+     -> m ()
+updateMigrationTransports master acidCell transport = do
+  let eDKey@(Right (DK.DKeyRaw (KeyPid p) (KeySource s) (KeyDestination d) (KeyTime t))) = DK.decodeKey (C.pack stKey) :: (Either String (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime))
+      stKey = T.unpack . key $ transport
+  eState <- T.sequence $ (\dKey -> liftIO $ attemptLookupInsert acidCell dKey (stateMap master)) <$> eDKey
+  res <- T.sequence $ (\state dKey -> saveAndUploadState master stKey state dKey (tvNkList transport)) <$> eState <*> eDKey
+  return ()
 
 
 saveAndUploadState :: MonadHandler m => MigrationRoutes
@@ -281,7 +300,7 @@ uploadState master s3Conn state stKey fName key@(ImpulseKey dKey) period delta m
               removeState key set
               atomically $ do
                   tsMap <- takeTMVar (stateMap master)
-                  putTMVar (stateMap master) (M.insert dKey Uploading tsMap)
+                  putTMVar (stateMap master) (M.insert dKey Idle tsMap)
               return $ Right ()
               where removeState k s = do
                       deleteResult <- update' state (DeleteManyTVSimpleImpulse k s)
