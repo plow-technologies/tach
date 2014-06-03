@@ -55,7 +55,7 @@ main = do
               updateTVSimpleImpulseTypeStoreAC cells st initTVSimpleStore
               createCheckpoint st
               wait <- newEmptyMVar
-              forkIO $ finally () $ warp 3000 (MigrationRoutes cells (S.singleton . buildTestImpulseKey $ dKey) conn sMap "http://cloud.aacs-us.com" wait)
+              forkIO $ warp 3000 (MigrationRoutes cells (S.singleton . buildTestImpulseKey $ dKey) conn sMap "http://cloud.aacs-us.com" wait)
               res <- takeMVar wait
               return ()
               where impulseStateMap state key = M.singleton key state
