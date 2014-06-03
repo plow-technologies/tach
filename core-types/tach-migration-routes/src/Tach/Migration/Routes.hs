@@ -21,6 +21,7 @@ import qualified Data.ByteString.UTF8 as UTF
 import qualified Data.ByteString.Lazy as L
 import qualified System.File.Tree as ST
 import qualified Network.AWS.S3Simple as S3
+import qualified Network.AWS.S3SimpleTypes as S3
 import qualified Data.Vector.Storable as VS
 import qualified Data.Vector as V
 import qualified Data.Sequence as SEQ
@@ -272,13 +273,7 @@ uploadState master s3Conn state stKey fName key@(ImpulseKey dKey) period delta m
       case eSet of
         Left _ -> return $ Left "Error retrieving set"
         Right set -> do
-          Prelude.putStrLn "Classifying ------------------------------------------------------------------------------------------"
-          let classifiedSet =  encode $ (fmap periodicToTransform) . tvDataToEither <$> (classifySet period delta minPeriodicSize set)
-          Prelude.putStrLn . show $ classifiedSet
-          Prelude.putStrLn "COMPRESSING --------------------------------------------------------------------------------------------"
-          let compressedSet = GZ.compress $ classifiedSet
-          Data.ByteString.Lazy.putStrLn $ compressedSet
-          Prelude.putStrLn "COMPRESSED --------------------------------------------------------------------------------------------"
+          let compressedSet = GZ.compress . encode $ (fmap periodicToTransform) . tvDataToEither <$> (classifySet period delta minPeriodicSize set)
           res <- uploadToS3 s3Conn "testtach" fName stKey compressedSet >>= return . Right
           case res of
             (Right (S3.S3Success _)) -> do

@@ -2,6 +2,7 @@
 module Main where
 
 import System.Console.CmdArgs
+import Control.Monad
 import Network.AWS.S3Simple
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as C
@@ -26,6 +27,7 @@ import Control.Concurrent.STM.TMVar
 import Control.Concurrent.MVar
 import Tach.Migration.Foundation
 import Tach.Migration.Routes.Types
+import Control.Exception
 
 data MigrationConfig = MigrationConfig{ 
    path :: String
@@ -53,7 +55,25 @@ main = do
               updateTVSimpleImpulseTypeStoreAC cells st initTVSimpleStore
               createCheckpoint st
               wait <- newEmptyMVar
-              forkIO $ warp 3000 (MigrationRoutes cells (S.singleton . buildTestImpulseKey $ dKey) conn sMap "http://cloud.aacs-us.com" wait)
+              forkIO $ finally () $ warp 3000 (MigrationRoutes cells (S.singleton . buildTestImpulseKey $ dKey) conn sMap "http://cloud.aacs-us.com" wait)
               res <- takeMVar wait
               return ()
               where impulseStateMap state key = M.singleton key state
+
+-- createWarp port cells keys conn sMap host wait = do
+--   warp 3000 (MigrationRoutes cells (S.singleton . buildTestImpulseKey $ dKey) conn sMap "http://cloud.aacs-us.com" wait)
+
+-- notWarpWarp host port migrationRoutes = do
+--  finally (do
+--              print )
+--          (void $ do
+--            print "Closing migration server"
+--            let cells = (migrationRoutesAcidCell migrationRoutes)
+--            void $ do
+--              archiveAndHandleTVSimpleImpulseTypeStoreAC cells
+--              createCheckpointAndCloseTVSimpleImpulseTypeStoreAC cells
+
+--            app <- toWaiApp migrationRoutes
+--            run 3000 app
+
+--            )

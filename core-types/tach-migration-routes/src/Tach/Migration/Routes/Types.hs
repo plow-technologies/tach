@@ -7,6 +7,7 @@ import Control.Concurrent.MVar
 import GHC.Generics
 import qualified Data.ByteString as BS
 import qualified Network.AWS.S3Simple as S3
+import qualified Network.AWS.S3SimpleTypes as S3
 import Data.Text
 import qualified Data.Text.Encoding as TE
 import Data.Serialize
