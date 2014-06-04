@@ -35,6 +35,9 @@ import Control.Exception
 import Data.Yaml 
 import Data.Streaming.Network.Internal
 
+import qualified Filesystem as FS
+import qualified Filesystem.Path as FP
+
 
 data MigrationPath = MigrationPath{ 
    migrationPath :: String
@@ -49,7 +52,7 @@ main = do
   args <- cmdArgs $ MigrationPath "config.yml"
   let fullPath = OS.fromText $ T.pack (migrationPath args)
   putStrLn $ show args
-  file <- BS.readFile $ migrationPath args
+  file <- FS.readFile fullPath
   let eConf =  Y.decodeEither file
   case eConf of
     (Left _) -> putStrLn "Error reading config file"
@@ -62,7 +65,7 @@ main = do
               resMap <- foldlWithKeyTVSimpleImpulseTypeStoreAC cells (\_ key _ ioStates -> (M.insert key Idle) <$> ioStates) (return M.empty)
               sMap <- newTMVarIO resMap
               wait <- newEmptyMVar
-              forkIO $ notWarpWarp migrationConf (MigrationRoutes cells S.empty conf sMap "http://cloud.aacs-us.com" wait) wait
+              forkIO $ notWarpWarp migrationConf (MigrationRoutes cells S.empty conf sMap "http://cloud.aacs-us.com" wait (migrationS3Bucket migrationConf)) wait
               res <- takeMVar wait
               return ()
               where impulseStateMap state key = M.singleton key state
@@ -97,6 +100,7 @@ data MigrationConfig = MigrationConfig {
       migrationPort :: Int 
     , migrationHost :: T.Text
     , migrationStatePath :: T.Text
+    , migrationS3Bucket :: String
 } deriving (Read, Eq, Show, Typeable,Generic)
 
 readMigrationConfig :: OS.FilePath -> IO MigrationConfig

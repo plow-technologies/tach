@@ -295,7 +295,7 @@ uploadState master s3Conn state stKey fName key@(ImpulseKey dKey) period delta m
         Left _ -> return $ Left "Error retrieving set"
         Right set -> do
           let compressedSet = GZ.compress . encode $ (fmap periodicToTransform) . tvDataToEither <$> (classifySet period delta minPeriodicSize set)
-          res <- uploadToS3 s3Conn "testtach" fName stKey compressedSet >>= return . Right
+          res <- uploadToS3 s3Conn (migrationRoutesS3Bucket master) fName stKey compressedSet >>= return . Right
           case res of
             (Right (S3.S3Success _)) -> do
               Prelude.putStrLn "Uploaded to s3! -------||||||||||||------------------------------"

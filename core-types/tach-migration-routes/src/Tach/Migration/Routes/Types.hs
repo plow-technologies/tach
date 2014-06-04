@@ -57,6 +57,7 @@ data MigrationRoutes = MigrationRoutes {
  ,stateMap :: TMVar (M.Map IncomingKey StateStatus)
  ,migrationRoutesDestination :: !String
  ,migrationRoutesWait :: MVar Int
+ ,migrationRoutesS3Bucket :: String
 }
 
 toMigrationTransport src dest time (p,tvnkList) = MigrationTransport (TE.decodeUtf8 $ DK.encodeKey (DK.DKeyRaw (KeyPid p) (KeySource src) (KeyDestination dest) (KeyTime time))) tvnkList
