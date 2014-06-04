@@ -1,5 +1,5 @@
 Name:                   tach-impulse-series-types
-Version:                0.1.10
+Version:                0.1.11
 Author:                 Scott Murphy <scottmurphy09@gmail.com>
 Maintainer:             Scott Murphy <scottmurphy09@gmail.com>
 License:                BSD3
@@ -27,7 +27,7 @@ Library
                       , vector == 0.10.9.1
                       , containers >=  0.5.0.0
                       , directed-keys == 0.2.1
-                      , tach-migration-types == 0.2.0
+                      , tach-migration-types == 0.2.1
 
 
 Test-Suite spec         

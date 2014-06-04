@@ -59,14 +59,6 @@ data MigrationRoutes = MigrationRoutes {
  ,migrationRoutesWait :: MVar Int
 }
 
-data MigrationTransport = MigrationTransport {
-    key :: Text
-  , tvNkList :: [TVNoKey]
-} deriving (Show, Eq, Generic)
-
-instance ToJSON MigrationTransport where
-instance FromJSON MigrationTransport where
-
 toMigrationTransport src dest time (p,tvnkList) = MigrationTransport (TE.decodeUtf8 $ DK.encodeKey (DK.DKeyRaw (KeyPid p) (KeySource src) (KeyDestination dest) (KeyTime time))) tvnkList
 
 

@@ -1,5 +1,5 @@
 Name:                   tach-migration-types
-Version:                0.2.0
+Version:                0.2.1
 Author:                 Kevin Cotrone <kevincotrone@gmail.com>
 Maintainer:             Kevin Cotrone <kevincotrone@gmail.com>
 License:                BSD3
@@ -19,6 +19,8 @@ Library
                        ,directed-keys
                        ,cereal
                        ,bytestring
+                       ,aeson >= 0.7.0.0
+                       ,text
 
 Test-Suite spec
   Type:                 exitcode-stdio-1.0

@@ -1,5 +1,5 @@
 Name:                   tach-periodic
-Version:                0.1.4
+Version:                0.1.5
 Author:                 Kevin Cotrone <kevincotrone@gmail.com>
 Maintainer:             Kevin Cotrone <kevincotrone@gmail.com>
 License:                BSD3
@@ -18,7 +18,7 @@ Library
   Build-Depends:        base >= 4 && < 5
                       , random
                       , containers
-                      , tach-impulse-series-types == 0.1.10
+                      , tach-impulse-series-types == 0.1.11
                       , safe == 0.3.4
 
 Test-Suite spec
