@@ -8,6 +8,7 @@ Synopsis:               Routes for the migration of data
 Description:            Handles the reuqest for the migration of data and helps share the routes so route names are shared and compiled
 Cabal-Version:          >= 1.10
 Build-Type:             Simple
+extra-source-files:     src/migration-routes
 
 Library
   Default-Language:     Haskell2010
@@ -27,7 +28,7 @@ Library
                       , text       >= 0.11.3.1
                       , bytestring >= 0.10.0.2
                       , http-types == 0.8.4
-                      , acid-state == 0.12.2
+                      , acid-state == 0.12.2.1
                       , tach-migration-acidic == 0.2.3
                       , containers == 0.5.5.1
                       , vector
@@ -43,9 +44,10 @@ Library
                       , tach-transformable-types == 0.1.5
                       , yaml
                       , tach-migration-types == 0.2.1
-                      , acid-cell == 0.1.12.1
+                      , acid-cell == 0.1.12.3
                       , safecopy
-
+                      , system-fileio == 0.3.14
+                      , system-filepath == 0.4.12
 
                       -- == 0.1.0.5
 Test-Suite spec
@@ -106,6 +108,7 @@ executable         migration-app
                       , system-filepath
                       , streaming-commons
                       , system-fileio
+                      , system-filepath
     ghc-options:       -threaded -O2 -rtsopts -Wall 
 Source-Repository head
   Type:                 git

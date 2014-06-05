@@ -65,7 +65,7 @@ main = do
               resMap <- foldlWithKeyTVSimpleImpulseTypeStoreAC cells (\_ key _ ioStates -> (M.insert key Idle) <$> ioStates) (return M.empty)
               sMap <- newTMVarIO resMap
               wait <- newEmptyMVar
-              forkIO $ notWarpWarp migrationConf (MigrationRoutes cells S.empty conf sMap "http://cloud.aacs-us.com" wait (migrationS3Bucket migrationConf)) wait
+              forkIO $ notWarpWarp migrationConf (MigrationRoutes cells S.empty conf sMap "http://cloud.aacs-us.com" wait (migrationS3Bucket migrationConf) (migrationStatePath migrationConf)) wait
               res <- takeMVar wait
               return ()
               where impulseStateMap state key = M.singleton key state
@@ -85,9 +85,9 @@ notWarpWarp config app wait = do
             putStrLn ("Closing migration server" :: String)
             let cells = (migrationRoutesAcidCell app)
             void $ do
-              archiveAndHandleTVSimpleImpulseTypeStoreAC cells (\ _ b -> do
-                                                                                          createCheckpoint b
-                                                                                          return b)
+              void $ archiveAndHandleTVSimpleImpulseTypeStoreAC cells (\ _ b -> do
+                                                                            createCheckpoint b
+                                                                            return b)
               createCheckpointAndCloseTVSimpleImpulseTypeStoreAC cells
             )
 

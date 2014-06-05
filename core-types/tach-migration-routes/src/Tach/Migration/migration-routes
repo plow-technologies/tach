@@ -1,5 +1,7 @@
-/ HomeR GET
+/ StartArchiveR GET
 /migration/receive/time-series-data/#String ReceiveTimeSeriesR POST
 /list/#String ListDataR GET
 /kill KillNodeR GET
 /query/timeseries QueryTimeSeriesR POST
+/stats/listSizes ListKeySortedR GET
+/start/archive StartArchiveR GET

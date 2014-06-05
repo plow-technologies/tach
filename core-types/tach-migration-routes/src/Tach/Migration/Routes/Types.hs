@@ -14,7 +14,7 @@ import Data.Text
 import qualified Data.Text.Encoding as TE
 import Data.Serialize
 import Data.SafeCopy        ( SafeCopy, base, deriveSafeCopy )
-
+import qualified Data.Text as T
 -- Acid and file related
 import Data.Acid
 
@@ -58,6 +58,7 @@ data MigrationRoutes = MigrationRoutes {
  ,migrationRoutesDestination :: !String
  ,migrationRoutesWait :: MVar Int
  ,migrationRoutesS3Bucket :: String
+ ,migrationRoutesStateFP :: T.Text
 }
 
 toMigrationTransport src dest time (p,tvnkList) = MigrationTransport (TE.decodeUtf8 $ DK.encodeKey (DK.DKeyRaw (KeyPid p) (KeySource src) (KeyDestination dest) (KeyTime time))) tvnkList

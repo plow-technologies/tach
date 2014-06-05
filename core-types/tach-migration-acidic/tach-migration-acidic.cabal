@@ -23,7 +23,7 @@ Library
                         Tach.Migration.Acidic.Instances
   Other-Modules:        Tach.Migration.Acidic.Internal
   Build-Depends:        base >= 4 && < 5
-                      , acid-state                == 0.12.2
+                      , acid-state                == 0.12.2.1
                       , safecopy                  == 0.8.3
                       , tach-impulse-series-types == 0.1.11
                       , containers

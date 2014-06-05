@@ -15,6 +15,7 @@ import Data.Text
 import Foreign.Storable
 import GHC.Generics
 import Network.HTTP.Types
+import Data.Maybe
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString.UTF8 as UTF
@@ -27,12 +28,14 @@ import qualified Data.Vector as V
 import qualified Data.Sequence as SEQ
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
-
+import qualified Filesystem as FS
+import qualified Filesystem.Path as FP
+import qualified Filesystem.Path.CurrentOS as OS
+--import Filesystem.Path
 -- Acid and file related
 import Data.Acid
 import Data.Acid.Advanced
 import Data.Acid.Local
-
 -- Containers
 import qualified Data.Set as S
 import qualified Data.Map as M
@@ -128,20 +131,40 @@ getHomeR = defaultLayout [whamlet|Simple API|]
 -- | Gets a list of all data for the specific key
 -- should probably be modified to include the start and end times
 getListDataR :: String -> Handler Value
-getListDataR stKey = undefined
---  master <- getYesod
---  let acidCell = (migrationRoutesAcidCell master)
---      eDKey = DK.decodeKey (C.pack stKey) :: (Either String (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime))
---      ePidkey = unKeyPid . DK.getSimpleKey <$> eDKey
---  eState <- T.sequence $ (\dKey -> liftIO $ attemptLookupInsert acidCell dKey (stateMap master)) <$> eDKey
---  eBounds <- (return . showLeft) =<< (T.sequence $ (\state key-> query' state (GetTVSimpleImpulseTimeBounds (ImpulseKey key))) <$> eState <*> eDKey) :: (Handler (Either String ((ImpulseStart Int), (ImpulseEnd Int))))
---  eRes <- T.sequence $ (\state pidKey key (l@(ImpulseStart (lower), u@(ImpulseEnd (upper)))) -> 
---                              query' state (GetTVSimpleImpulseMany (ImpulseKey key) l u)) <$> eState <*> ePidkey <*> eDKey <*> eBounds
---  case eRes of
---    Left s -> return . toJSON $ (show s) ++ (show ePidkey)
---    Right (Left e) -> return . toJSON . show $ e
---    Right (Right res) -> return . toJSON $ res
+getListDataR stKey = do
+  master <- getYesod
+  let acidCell = (migrationRoutesAcidCell master)
+      eDKey = DK.decodeKey (C.pack stKey) :: (Either String (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime))
+      ePidkey = unKeyPid . DK.getSimpleKey <$> eDKey
+  eState <- T.sequence $ (\dKey -> liftIO $ attemptLookupInsert acidCell dKey (stateMap master)) <$> eDKey
+  eRes <- T.sequence $ (\state pidKey key -> 
+                              query' state (GetTVSimpleImpulseMany (ImpulseKey key) (ImpulseStart minBound) (ImpulseEnd maxBound))) <$> eState <*> ePidkey <*> eDKey
+  case eRes of
+    Left s -> return . toJSON $ (show s) ++ (show ePidkey)
+    Right (Left e) -> return . toJSON . show $ e
+    Right (Right res) -> return . toJSON $ res
+
+data KeyPidSize = KeyPidSize {
+  kpsKey :: T.Text
+ ,kpsPid :: Int
+ ,kpsSize :: Int
+} deriving (Read, Show, Generic)
+
+instance ToJSON KeyPidSize where
+
+getListKeySortedR :: Handler Value
+getListKeySortedR = do
+  master <- getYesod
+  let acidCell = (migrationRoutesAcidCell master)
+  res <- liftIO $ traverseWithKeyTVSimpleImpulseTypeStoreAC acidCell (\_ key@(DK.DKeyRaw (KeyPid pid) _ _ _) state -> do
+    eSetSize <- query' state (GetTVSimpleImpulseSize (ImpulseKey key))
+    return $ eitherToMaybe $ (\size -> KeyPidSize (TE.decodeUtf8 $ DK.encodeKey key) pid size) <$> eSetSize
+    )
+  return . toJSON . catMaybes $ snd <$> (M.toList res)
   
+eitherToMaybe :: Either a b -> Maybe b
+eitherToMaybe (Left a) = Nothing
+eitherToMaybe (Right b) = Just b
 
 showLeft :: (Show a) => Either a b -> Either String b
 showLeft (Left s) = Left . show $ s
@@ -154,7 +177,7 @@ getKillNodeR = do
   let acidCell = (migrationRoutesAcidCell master)
   liftIO $ do
     createCheckpointAndCloseTVSimpleImpulseTypeStoreAC acidCell
-    archiveAndHandleTVSimpleImpulseTypeStoreAC acidCell (\ _ b -> return b)
+    archiveAndHandleTVSimpleImpulseTypeStoreAC acidCell (\ _ state -> return state)
   --     migrationElems = M.elems migrationMap
   --     migrationKeys = M.keys migrationMap
   -- _ <- liftIO $ mapM createCheckpoint migrationElems
@@ -169,6 +192,26 @@ getKillNodeR = do
         killing = "Killing"
         elemToPath :: IncomingKey -> FilePath
         elemToPath key = UTF.toString $ BS.append (DK.encodeKey key) "/Archive" --Possibly find a way to make this a little safer?
+
+getStartArchiveR :: Handler Value
+getStartArchiveR = do
+  master <- getYesod
+  gcAllStates (migrationRoutesAcidCell master) (migrationRoutesStateFP master)
+  return . toJSON $ (4 :: Int)
+
+gcAllStates :: (MonadHandler m) => MigrationCell -> T.Text -> m ()
+gcAllStates acidCell statesFP = do
+  liftIO $ do
+    dir <- FS.getWorkingDirectory
+    archiveAndHandleTVSimpleImpulseTypeStoreAC acidCell (\fp state -> do
+      createCheckpoint state
+      createArchive state
+      createCheckpoint state
+      let fullDir = dir FP.</> (OS.fromText statesFP) FP.</> fp FP.</> (OS.fromText "Archive")
+      FS.removeTree fullDir
+      Prelude.putStrLn . show $ fp
+      return state)
+    return ()
 
 --post body -> open state -> add post body to state -> check size (possibly start send)-> close state
 --send action
@@ -193,6 +236,7 @@ updateMigrationTransports master acidCell transport = do
       stKey = T.unpack . key $ transport -- get the possible dKey from the transport
   eState <- T.sequence $ (\dKey -> liftIO $ attemptLookupInsert acidCell dKey (stateMap master)) <$> eDKey -- Get the acid-cell if it exists
   res <- T.sequence $ (\state dKey -> saveAndUploadState master stKey state dKey (tvNkList transport)) <$> eState <*> eDKey -- If there is a state, save and upload the data
+  --gcAllStates acidCell (migrationRoutesStateFP master)
   return ()
 
 
