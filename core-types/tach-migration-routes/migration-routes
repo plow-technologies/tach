@@ -7,3 +7,5 @@
 /query/timeseries QueryTimeSeriesR POST
 /stats/listSizes ListKeySortedR GET
 /start/archive StartArchiveR GET
+/info/gc CheckGCStateR GET
+/info/count TotalCountR GET

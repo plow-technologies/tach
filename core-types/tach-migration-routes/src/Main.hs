@@ -28,6 +28,7 @@ import Data.Acid.Advanced
 import Data.Acid.Local
 import Control.Concurrent
 import Control.Concurrent.STM.TMVar
+import Control.Concurrent.STM.TVar
 import Control.Concurrent.MVar
 import Tach.Migration.Foundation
 import Tach.Migration.Routes.Types
@@ -65,7 +66,8 @@ main = do
               resMap <- foldlWithKeyTVSimpleImpulseTypeStoreAC cells (\_ key _ ioStates -> (M.insert key Idle) <$> ioStates) (return M.empty)
               sMap <- newTMVarIO resMap
               wait <- newEmptyMVar
-              forkIO $ notWarpWarp migrationConf (MigrationRoutes cells S.empty conf sMap "http://cloud.aacs-us.com" wait (migrationS3Bucket migrationConf) (migrationStatePath migrationConf)) wait
+              gcState <- newTVarIO GCIdle
+              forkIO $ notWarpWarp migrationConf (MigrationRoutes cells S.empty conf sMap "http://cloud.aacs-us.com" wait (migrationS3Bucket migrationConf) (migrationStatePath migrationConf) gcState) wait
               res <- takeMVar wait
               return ()
               where impulseStateMap state key = M.singleton key state

@@ -5,6 +5,7 @@ module Tach.Migration.Routes.Types where
 import Data.Aeson 
 import Tach.Migration.Instances
 import Control.Concurrent.STM.TMVar
+import Control.Concurrent.STM.TVar
 import Control.Concurrent.MVar
 import GHC.Generics
 import qualified Data.ByteString as BS
@@ -59,7 +60,11 @@ data MigrationRoutes = MigrationRoutes {
  ,migrationRoutesWait :: MVar Int
  ,migrationRoutesS3Bucket :: String
  ,migrationRoutesStateFP :: T.Text
+ ,migrationRoutesGCState :: TVar GCState
 }
+
+data GCState = GCStart | GCRunning | GCIdle deriving (Read, Show, Eq, Generic)
+instance ToJSON GCState where
 
 toMigrationTransport src dest time (p,tvnkList) = MigrationTransport (TE.decodeUtf8 $ DK.encodeKey (DK.DKeyRaw (KeyPid p) (KeySource src) (KeyDestination dest) (KeyTime time))) tvnkList
 
