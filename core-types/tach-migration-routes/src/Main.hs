@@ -6,6 +6,7 @@ import Control.Applicative
 import System.Console.CmdArgs
 import Control.Monad
 import Network.AWS.S3Simple
+import Control.Concurrent.STM
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as C
 import qualified Data.Either as E
@@ -67,6 +68,7 @@ main = do
               sMap <- newTMVarIO resMap
               wait <- newEmptyMVar
               gcState <- newTVarIO GCIdle
+              forkIO . void $ gcRunner ((migrationGCDelayMinutes migrationConf) * 60 * 1000 * 1000) gcState
               forkIO $ notWarpWarp migrationConf (MigrationRoutes cells S.empty conf sMap "http://cloud.aacs-us.com" wait (migrationS3Bucket migrationConf) (migrationStatePath migrationConf) gcState) wait
               res <- takeMVar wait
               return ()
@@ -103,6 +105,7 @@ data MigrationConfig = MigrationConfig {
     , migrationHost :: T.Text
     , migrationStatePath :: T.Text
     , migrationS3Bucket :: String
+    , migrationGCDelayMinutes :: Int
 } deriving (Read, Eq, Show, Typeable,Generic)
 
 readMigrationConfig :: OS.FilePath -> IO MigrationConfig
@@ -112,3 +115,9 @@ readMigrationConfig fPath = do
 
 instance FromJSON MigrationConfig where
 instance ToJSON MigrationConfig where
+
+gcRunner :: Int -> TVar GCState -> IO b
+gcRunner delay tv = forever $ do
+  threadDelay delay
+  putStrLn "Attempting to start garbage collection"
+  atomically $ writeTVar tv GCStart

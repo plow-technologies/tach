@@ -49,6 +49,7 @@ Library
                       , system-fileio == 0.3.14
                       , system-filepath == 0.4.12
                       , async == 2.0.1.5
+                      , lifted-async == 0.2.0
 
                       -- == 0.1.0.5
 Test-Suite spec
@@ -111,6 +112,7 @@ executable         migration-app
                       , system-fileio
                       , system-filepath
                       , async
+                      , lifted-async
     ghc-options:       -threaded -O2 -rtsopts -Wall 
 Source-Repository head
   Type:                 git

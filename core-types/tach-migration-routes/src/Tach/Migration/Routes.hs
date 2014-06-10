@@ -8,6 +8,7 @@ import Data.ByteString.Lazy
 import Control.Applicative
 import Control.Concurrent
 import Control.Concurrent.Async
+import qualified Control.Concurrent.Async.Lifted as AL
 import Control.Concurrent.STM.TMVar
 import Control.Concurrent.STM.TVar
 import Control.Monad.STM
@@ -137,14 +138,14 @@ getHomeR = defaultLayout [whamlet|Simple API|]
 getListDataR :: String -> Handler Value
 getListDataR stKey = do
   master <- getYesod
-  let acidCell = (migrationRoutesAcidCell master)
+  let acidCell = migrationRoutesAcidCell master
       eDKey = DK.decodeKey (C.pack stKey) :: (Either String (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime))
       ePidkey = unKeyPid . DK.getSimpleKey <$> eDKey
   eState <- T.sequence $ (\dKey -> liftIO $ attemptLookupInsert acidCell dKey (stateMap master)) <$> eDKey
   eRes <- T.sequence $ (\state pidKey key -> 
                               query' state (GetTVSimpleImpulseMany (ImpulseKey key) (ImpulseStart minBound) (ImpulseEnd maxBound))) <$> eState <*> ePidkey <*> eDKey
   case eRes of
-    Left s -> return . toJSON $ (show s) ++ (show ePidkey)
+    Left s -> return . toJSON $ show s ++ show ePidkey
     Right (Left e) -> return . toJSON . show $ e
     Right (Right res) -> return . toJSON $ res
 
@@ -159,10 +160,10 @@ instance ToJSON KeyPidSize where
 getListKeySortedR :: Handler Value
 getListKeySortedR = do
   master <- getYesod
-  let acidCell = (migrationRoutesAcidCell master)
+  let acidCell = migrationRoutesAcidCell master
   res <- liftIO $ traverseWithKeyTVSimpleImpulseTypeStoreAC acidCell (\_ key@(DK.DKeyRaw (KeyPid pid) _ _ _) state -> do
     eSetSize <- query' state (GetTVSimpleImpulseSize (ImpulseKey key))
-    return $ eitherToMaybe $ (\size -> KeyPidSize (TE.decodeUtf8 $ DK.encodeKey key) pid size) <$> eSetSize
+    return $ eitherToMaybe $ KeyPidSize (TE.decodeUtf8 $ DK.encodeKey key) pid <$> eSetSize
     )
   return . toJSON . catMaybes $ snd <$> (M.toList res)
   
@@ -193,6 +194,7 @@ getKillNodeR = do
   void . liftIO $ tryPutMVar (migrationRoutesWait master) 0
   void . liftIO $ tryPutMVar (migrationRoutesWait master) 0
   void . liftIO $ tryPutMVar (migrationRoutesWait master) 0
+  void . liftIO $ tryPutMVar (migrationRoutesWait master) 0
   return . toJSON $ killing
   where killing :: Text
         killing = "Killing"
@@ -203,16 +205,21 @@ getStartArchiveR :: Handler Value
 getStartArchiveR = do
   master <- getYesod
   let gcState = migrationRoutesGCState master
-  liftIO . atomically $ writeTVar gcState GCStart
-  checkAndProcessGCState master
-  return . toJSON $ (4 :: Int)
+  gc <- liftIO . atomically $ readTVar gcState
+  case gc of
+    GCIdle -> do
+      liftIO . atomically $ writeTVar gcState GCStart
+      checkAndProcessGCState master
+      return . toJSON $ ("Starting GC" :: String)
+    _ -> do
+      return . toJSON $ gc
 
 checkAndProcessGCState master = do
   let gcState = (migrationRoutesGCState master)
   gcStatus <- liftIO $ readTVarIO gcState
   case gcStatus of
     GCIdle -> do
-      liftIO $ print "GC is idle. Continuing as normal"
+      --liftIO $ print "GC is idle. Continuing as normal"
       return ()
     GCStart -> do
       liftIO $ print "GC is starting!"
@@ -274,13 +281,18 @@ postReceiveTimeSeriesR :: Handler Value
 postReceiveTimeSeriesR = do
   master <- getYesod
   checkAndProcessGCState master
-  liftIO $ print "1"
+  -- liftIO $ print "1"
   eTsInfo <- resultToEither <$> parseJsonBody :: Handler (Either String [MigrationTransportTV]) -- Get the post body
-  liftIO $ print "2"
+  --liftIO $ print "2"
   let acidCell = (migrationRoutesAcidCell master)
-  liftIO $ print "3"
-  _ <- T.sequence $ (\l -> Control.Monad.mapM_ (updateMigrationTransports master acidCell) l) <$> eTsInfo -- Update each result that was received
-  liftIO $ print "4"
+  --liftIO $ print "3"
+  _ <- T.sequence $ (\list -> do
+    --T.traverse (\l -> do
+    --            Control.Monad.mapM_ (updateMigrationTransports master acidCell)) l (groupBy 16 list)) <$> eTsInfo -- Update each result that was received
+    T.traverse (\smallList -> do
+      asList <- T.traverse (\x -> AL.async $ updateMigrationTransports master acidCell x) smallList
+      T.traverse AL.wait asList) (groupUp 16 list)) <$> eTsInfo
+  --liftIO $ print "4"
   sendResponseStatus status201 $ toJSON end
   where end :: String
         end = "Ended"
@@ -294,11 +306,11 @@ updateMigrationTransports :: MonadHandler m =>
 updateMigrationTransports master acidCell transport = do
   let eDKey@(Right (DK.DKeyRaw (KeyPid p) (KeySource s) (KeyDestination d) (KeyTime t))) = DK.decodeKey (C.pack stKey) :: (Either String (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime))
       stKey = T.unpack . key $ transport -- get the possible dKey from the transport
-  liftIO $ print "5"
+  --liftIO $ print "5"
   eState <- T.sequence $ (\dKey -> liftIO $ attemptLookupInsert acidCell dKey (stateMap master)) <$> eDKey -- Get the acid-cell if it exists
-  liftIO $ print "6"
+  --liftIO $ print "6"
   res <- T.sequence $ (\state dKey -> saveAndUploadState master stKey state dKey (tvNkList transport)) <$> eState <*> eDKey -- If there is a state, save and upload the data
-  liftIO $ print "7"
+  --liftIO $ print "7"
   return ()
 
 
@@ -313,7 +325,7 @@ saveAndUploadState master stKey state dKey tvNkList = do
   let destination = (migrationRoutesDestination master)
   case dKey of
     key@(DK.DKeyRaw {getDest = destination}) -> do
-      liftIO $ print "8"
+      --liftIO $ print "8"
       handleInsert master stKey state (ImpulseKey key) tvNkList
     otherwise -> do
       -- sendResponseStatus status500 $ toJSON incorrectDestination
@@ -330,16 +342,16 @@ saveAndUploadState master stKey state dKey tvNkList = do
 --                                      -> [TVNoKey] 
 --                                      -> m (EventResult InsertManyTVSimpleImpulse)
 handleInsert master stKey state key@(ImpulseKey dKey) tvSet = do
-  liftIO $ print "9"
+  --liftIO $ print "9"
   _ <- update' state (InsertManyTVSimpleImpulse key (S.fromList tvSet)) -- insert the list into the set
-  liftIO $ print "10"
+  --liftIO $ print "10"
   void $ liftIO $ createCheckpoint state
-  liftIO $ print "11"
+  --liftIO $ print "11"
   eSetSize <- query' state (GetTVSimpleImpulseSize key)                 -- get the set size and bounds
-  liftIO $ print "12"
+  --liftIO $ print "12"
   eBounds <- query' state (GetTVSimpleImpulseTimeBounds key)
-  liftIO . Prelude.putStrLn $ ("---------------------------------------------------------------------" :: String) ++ (show eSetSize) ++ (show . DK.encodeKey $ dKey)
-  liftIO $ print "13"
+  -- liftIO . Prelude.putStrLn $ ("---------------------------------------------------------------------" :: String) ++ (show eSetSize) ++ (show . DK.encodeKey $ dKey)
+  --liftIO $ print "13"
   res <- T.sequence $ (\size bounds -> checkAndUpload master state stKey key size bounds) <$> eSetSize <*> eBounds
   case res of
     Left _ -> do
@@ -354,9 +366,18 @@ handleInsert master stKey state key@(ImpulseKey dKey) tvSet = do
         done :: String
         done = "DONE"
 
-
+checkAndUpload
+  :: (MonadIO m, Show a2, Show a1, Show a, Ord a2, Num a2,
+      Functor m) =>
+     MigrationRoutes
+     -> AcidState (EventState GetTVSimpleImpulseTimeBounds)
+     -> String
+     -> ImpulseKey IncomingKey
+     -> a2
+     -> (ImpulseStart a, ImpulseEnd a1)
+     -> m ()
 checkAndUpload master state stKey key@(ImpulseKey dKey) size (ImpulseStart start, ImpulseEnd end) = do
-  liftIO . Prelude.putStrLn . show $ size
+  -- liftIO . Prelude.putStrLn . show $ size
   if (size >= 50000)
     then do
       sMap <- liftIO . atomically $ readTMVar tmMap
@@ -370,11 +391,11 @@ checkAndUpload master state stKey key@(ImpulseKey dKey) size (ImpulseStart start
           void $ liftIO $ createCheckpoint state
           -- sendResponseStatus status201 $ toJSON done
         otherwise -> do
-          void $ liftIO $ Prelude.putStrLn "NOT STARTING UPLOAD"
+          --void $ liftIO $ Prelude.putStrLn "NOT STARTING UPLOAD"
           void $ liftIO $ createCheckpoint state
           -- sendResponseStatus status201 $ toJSON err
     else do
-      void $ liftIO $ Prelude.putStrLn "NOT STARTING UPLOAD"
+      --void $ liftIO $ Prelude.putStrLn "NOT STARTING UPLOAD"
       void $ liftIO $ createCheckpoint state
       -- sendResponseStatus status201 $ toJSON err
   where
@@ -421,7 +442,7 @@ uploadState master s3Conn state stKey fName key@(ImpulseKey dKey) period delta m
                       createCheckpoint state
                       case deleteResult of
                         Left _ -> do
-                          Prelude.putStrLn "NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT  -------------------------------------------//////////////////////0000000000000"
+                          --Prelude.putStrLn "NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT  -------------------------------------------//////////////////////0000000000000"
                           removeState k s
                         Right _ -> do
                           Prelude.putStrLn "DELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETED //////////////////////////////***************************************\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"
