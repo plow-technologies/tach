@@ -96,7 +96,7 @@ notWarpWarp config app wait = do
             )
 
 startServer app conf = do
-  let warpSettings = (setFdCacheDuration 0) . (setTimeout 60) . (setHost (Host $ T.unpack (migrationHost conf))) . (setPort . migrationPort $ conf) $ defaultSettings
+  let warpSettings = (setFdCacheDuration 0) . (setTimeout 120) . (setHost (Host $ T.unpack (migrationHost conf))) . (setPort . migrationPort $ conf) $ defaultSettings
   runSettings warpSettings app
 
 
@@ -121,3 +121,13 @@ gcRunner delay tv = forever $ do
   threadDelay delay
   putStrLn "Attempting to start garbage collection"
   atomically $ writeTVar tv GCStart
+  waitTVar tv
+
+
+waitTVar tv = do
+  status <- atomically $ readTVar tv
+  case status of
+    GCIdle -> return ()
+    otherwise -> do
+      threadDelay 10000000 -- 10 seconds
+      waitTVar tv

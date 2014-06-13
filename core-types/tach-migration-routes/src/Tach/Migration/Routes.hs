@@ -79,7 +79,11 @@ import Data.Acid.Cell.Types
 
 mkYesodDispatch "MigrationRoutes" resourcesMigrationRoutes
 
-instance Yesod MigrationRoutes
+instance Yesod MigrationRoutes where
+  maximumContentLength _ (Just (ReceiveTimeSeriesR _)) = Just $ 2 * 1024 * 1024 * 1024 -- 2 gigabytes 
+  maximumContentLength _  _ = Just $ 2  * 1024 * 1024 -- 2 mb 
+
+
 
 -- instance VS.Storable TVNoKey where
  -- sizeOf x = (sizeOf . tvNkSimpleTime $ x) + (sizeOf . tvNkSimpleValue $ x)
@@ -180,10 +184,9 @@ getKillNodeR :: Handler Value
 getKillNodeR = do
   master <- getYesod
   let acidCell = (migrationRoutesAcidCell master)
-      gcStatus = ()
   liftIO $ do
-    createCheckpointAndCloseTVSimpleImpulseTypeStoreAC acidCell
     archiveAndHandleTVSimpleImpulseTypeStoreAC acidCell (\ _ state -> return state)
+    createCheckpointAndCloseTVSimpleImpulseTypeStoreAC acidCell
   --     migrationElems = M.elems migrationMap
   --     migrationKeys = M.keys migrationMap
   -- _ <- liftIO $ mapM createCheckpoint migrationElems
@@ -253,22 +256,35 @@ gcAllStates gcState acidCell statesFP = do
       _ -> do
         atomically $ writeTVar gcState GCRunning
         dir <- FS.getWorkingDirectory
+        liftIO . Prelude.putStrLn $ "GC acid-cell archiving"
         archiveAndHandleTVSimpleImpulseTypeStoreAC acidCell (\fp state -> do
           return state)
-        asyncRes <- traverseWithKeyTVSimpleImpulseTypeStoreAC acidCell (\_ key state -> async $ (gcSingleState acidCell (dir FP.</> (OS.fromText statesFP)) key state))
-        T.traverse wait asyncRes
+        liftIO . Prelude.putStrLn $ "GC traversing"
+        stateKeyList <- traverseWithKeyTVSimpleImpulseTypeStoreAC acidCell (\_ key state -> async $ gcSingleState (dir FP.</> (OS.fromText statesFP)) key state)
+        liftIO . Prelude.putStrLn $ "GC waiting"
+        T.traverse wait stateKeyList
+        -- asyncTraverseGroup (M.elems stateKeyList) (dir FP.</> (OS.fromText statesFP))
+        liftIO . Prelude.putStrLn $ "GC done"
         atomically $ writeTVar gcState GCIdle
         return ()
     return ()
 
+--asyncTraverseGroup statesWKey statesFP = do
+--  let grouped = groupUp 16 statesWKey
+--  allRes <- T.traverse (\states -> do
+--    aRes <- T.traverse (\(state,key) -> async $ gcSingleState statesFP key state) states
+--    T.traverse wait aRes) grouped
+--  return ()
 
-gcSingleState cellKey dir key state = do
-  createCheckpoint state
-  createArchive state
+gcSingleState dir key state = do
   let fullDir = dir FP.</> (OS.fromText . encodeDirectedKeyRaw $ key) FP.</> (OS.fromText "Archive")
-  FS.removeTree fullDir
   print fullDir
+  isDir <- FS.isDirectory fullDir
+  if isDir
+    then FS.removeTree fullDir
+    else return ()
 
+-- | returns the gc state
 getCheckGCStateR :: Handler Value
 getCheckGCStateR = do
   master <- getYesod
@@ -277,25 +293,27 @@ getCheckGCStateR = do
 
 --post body -> open state -> add post body to state -> check size (possibly start send)-> close state
 --send action
-postReceiveTimeSeriesR :: Handler Value
-postReceiveTimeSeriesR = do
+postReceiveTimeSeriesR :: Int -> Handler Value
+postReceiveTimeSeriesR size = do
   master <- getYesod
   checkAndProcessGCState master
-  -- liftIO $ print "1"
+  liftIO $ print "Parsing JSON body"
   eTsInfo <- resultToEither <$> parseJsonBody :: Handler (Either String [MigrationTransportTV]) -- Get the post body
-  --liftIO $ print "2"
   let acidCell = (migrationRoutesAcidCell master)
-  --liftIO $ print "3"
-  _ <- T.sequence $ (\list -> do
-    --T.traverse (\l -> do
-    --            Control.Monad.mapM_ (updateMigrationTransports master acidCell)) l (groupBy 16 list)) <$> eTsInfo -- Update each result that was received
-    T.traverse (\smallList -> do
-      asList <- T.traverse (\x -> AL.async $ updateMigrationTransports master acidCell x) smallList
+  liftIO $ print "Traversing"
+  res <- T.sequence $ (\list -> do
+    T.traverse (\smallList -> do                                                                      --T.traverse (\l -> do
+      asList <- T.traverse (\x -> AL.async $ updateMigrationTransports master acidCell x) smallList   --                    Control.Monad.mapM_ (updateMigrationTransports master acidCell)) l (groupBy 16 list)) <$> eTsInfo -- Update each result that was received
       T.traverse AL.wait asList) (groupUp 16 list)) <$> eTsInfo
-  --liftIO $ print "4"
-  sendResponseStatus status201 $ toJSON end
+  liftIO $ print "returning!"
+  case res of
+    Left _ -> sendResponseStatus status501 $ toJSON err 
+    Right _ -> do
+      sendResponseStatus status201 $ toJSON size
   where end :: String
         end = "Ended"
+        err :: String
+        err = "Error!"
 
 
 updateMigrationTransports :: MonadHandler m =>
@@ -306,11 +324,8 @@ updateMigrationTransports :: MonadHandler m =>
 updateMigrationTransports master acidCell transport = do
   let eDKey@(Right (DK.DKeyRaw (KeyPid p) (KeySource s) (KeyDestination d) (KeyTime t))) = DK.decodeKey (C.pack stKey) :: (Either String (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime))
       stKey = T.unpack . key $ transport -- get the possible dKey from the transport
-  --liftIO $ print "5"
   eState <- T.sequence $ (\dKey -> liftIO $ attemptLookupInsert acidCell dKey (stateMap master)) <$> eDKey -- Get the acid-cell if it exists
-  --liftIO $ print "6"
   res <- T.sequence $ (\state dKey -> saveAndUploadState master stKey state dKey (tvNkList transport)) <$> eState <*> eDKey -- If there is a state, save and upload the data
-  --liftIO $ print "7"
   return ()
 
 
@@ -325,10 +340,9 @@ saveAndUploadState master stKey state dKey tvNkList = do
   let destination = (migrationRoutesDestination master)
   case dKey of
     key@(DK.DKeyRaw {getDest = destination}) -> do
-      --liftIO $ print "8"
       handleInsert master stKey state (ImpulseKey key) tvNkList
     otherwise -> do
-      -- sendResponseStatus status500 $ toJSON incorrectDestination
+      sendResponseStatus status501 $ toJSON incorrectDestination
       return ()
       where incorrectDestination :: String
             incorrectDestination = "Incorrect destination"
@@ -342,13 +356,10 @@ saveAndUploadState master stKey state dKey tvNkList = do
 --                                      -> [TVNoKey] 
 --                                      -> m (EventResult InsertManyTVSimpleImpulse)
 handleInsert master stKey state key@(ImpulseKey dKey) tvSet = do
-  --liftIO $ print "9"
+  ePreSetSize <- query' state (GetTVSimpleImpulseSize key)
   _ <- update' state (InsertManyTVSimpleImpulse key (S.fromList tvSet)) -- insert the list into the set
-  --liftIO $ print "10"
-  void $ liftIO $ createCheckpoint state
-  --liftIO $ print "11"
   eSetSize <- query' state (GetTVSimpleImpulseSize key)                 -- get the set size and bounds
-  --liftIO $ print "12"
+  void . liftIO . T.sequence $ checkCreateCheckpoint state <$> ePreSetSize <*> eSetSize
   eBounds <- query' state (GetTVSimpleImpulseTimeBounds key)
   -- liftIO . Prelude.putStrLn $ ("---------------------------------------------------------------------" :: String) ++ (show eSetSize) ++ (show . DK.encodeKey $ dKey)
   --liftIO $ print "13"
@@ -365,6 +376,14 @@ handleInsert master stKey state key@(ImpulseKey dKey) tvSet = do
         err = "ERROR"
         done :: String
         done = "DONE"
+
+checkCreateCheckpoint state preSize postSize = do
+  if (preSize == postSize)
+    then return ()
+    else do
+      liftIO $ createCheckpoint state
+      liftIO $ createArchive state
+
 
 checkAndUpload
   :: (MonadIO m, Show a2, Show a1, Show a, Ord a2, Num a2,
@@ -506,13 +525,14 @@ attemptLookupInsert cell key tmMap = do
   case mRes of
     Just res -> return res
     Nothing -> do
+      liftIO $ print $ "Inserting!"
       st <- insertTVSimpleImpulseTypeStoreAC cell store
       updateTVSimpleImpulseTypeStoreAC cell st store
       atomically $ do
         tsMap <- takeTMVar tmMap
         putTMVar tmMap (M.insert key Idle tsMap)
       createCheckpoint st
-      return st
+      attemptLookupInsert cell key tmMap
 
 
 

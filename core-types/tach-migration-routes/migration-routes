@@ -1,7 +1,7 @@
 -- Routes file for the migration to tach
 
 / HomeR GET
-/migration/receive/time-series-data ReceiveTimeSeriesR POST
+/migration/receive/time-series-data/#Int ReceiveTimeSeriesR POST
 /list/#String ListDataR GET
 /kill KillNodeR GET
 /query/timeseries QueryTimeSeriesR POST
