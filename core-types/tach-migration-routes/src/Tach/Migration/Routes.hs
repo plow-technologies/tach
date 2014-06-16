@@ -323,7 +323,7 @@ saveAndUploadState :: MonadHandler m =>
 saveAndUploadState master stKey state dKey tvNkList = do
   let destination = (migrationRoutesDestination master)
   if (destination == (UTF.toString . unKeyDestination . DK.getDest $ dKey))
-    then handleInsert master stKey state (ImpulseKey dKey) tvNkList
+    then handleInsert master stKey state (ImpulseKey dKey) tvNkList --If the destination is the same as the destination for the current host
     else do
       sendResponseStatus status501 $ toJSON incorrectDestination
       return . Left $ ()
@@ -341,7 +341,7 @@ handleInsert :: (MonadIO m, Functor m) =>
                       -> m (Either () ())
 handleInsert master stKey state key tvSet = do
   ePreSetSize <- query' state (GetTVSimpleImpulseSize key)
-  _ <- update' state (InsertManyTVSimpleImpulse key (S.fromList tvSet)) -- insert the list into the set
+  void $ update' state (InsertManyTVSimpleImpulse key (S.fromList tvSet)) -- insert the list into the set
   eSetSize <- query' state (GetTVSimpleImpulseSize key)                 -- get the set size and bounds
   void . liftIO . T.sequence $ checkCreateCheckpoint state <$> ePreSetSize <*> eSetSize
   eBounds <- query' state (GetTVSimpleImpulseTimeBounds key)
@@ -352,6 +352,7 @@ handleInsert master stKey state key tvSet = do
     Right suc -> do
       return . Right $ suc
 
+-- | Used only after insert. Checks the two sizes and if they are equal it creates a checkpoint and archives it
 checkCreateCheckpoint :: (MonadIO m, Eq a) => AcidState st -> a -> a -> m ()
 checkCreateCheckpoint state preSize postSize = do
   if (preSize == postSize)
@@ -361,13 +362,13 @@ checkCreateCheckpoint state preSize postSize = do
       liftIO $ createArchive state
 
 
-checkAndUpload :: (MonadIO m, Show a2, Show a1, Show a, Ord a2, Num a2, Functor m) =>
+checkAndUpload :: (MonadIO m, Functor m) =>
      MigrationRoutes
      -> AcidState (EventState GetTVSimpleImpulseTimeBounds)
      -> String
      -> ImpulseKey IncomingKey
-     -> a2
-     -> (ImpulseStart a, ImpulseEnd a1)
+     -> Int
+     -> (ImpulseStart Int, ImpulseEnd Int)
      -> m ()
 checkAndUpload master state stKey key@(ImpulseKey dKey) size bounds@(ImpulseStart start, ImpulseEnd end) = do
   if (size >= 50000)
@@ -378,7 +379,7 @@ checkAndUpload master state stKey key@(ImpulseKey dKey) size bounds@(ImpulseStar
           liftIO $ atomically $ do
             tsMap <- takeTMVar tmMap
             putTMVar tmMap (M.insert dKey Uploading tsMap)
-          -- void $ liftIO . forkIO . void $ uploadState master (s3Conn master) state stKey fName key 15 1 100 bounds
+          void $ liftIO . forkIO . void $ uploadState master (s3Conn master) state stKey fName key 15 1 100 bounds
           void $ liftIO $ Prelude.putStrLn "Starting upload"
           void $ liftIO $ createCheckpoint state
         otherwise -> do
@@ -386,7 +387,7 @@ checkAndUpload master state stKey key@(ImpulseKey dKey) size bounds@(ImpulseStar
     else do
       return ()
   where
-    fName = (show start) ++ "_" ++ (show end)
+    fName = (show  $ start) ++ "_" ++ (show  $ end)
     tmMap = stateMap master
 
 
@@ -400,11 +401,11 @@ uploadState :: MigrationRoutes
                      -> Int
                      -> Int
                      -> Int
-                     -> (ImpulseStart TVSStart, ImpulseEnd TVSEnd)
+                     -> (ImpulseStart Int, ImpulseEnd Int)
                      -> IO (Either String ())
 uploadState master s3Conn state stKey fName key@(ImpulseKey dKey) period delta minPeriodicSize bounds = do
   --eSet <- (\(ImpulseStart start,ImpulseEnd end) -> query' state (GetTVSimpleImpulseMany key start end)) bounds
-  eSet <- (\(ImpulseStart start,ImpulseEnd end) s k -> query' s (GetTVSimpleImpulseMany k start end)) bounds state key
+  eSet <- (\(start, end) s k -> query' s (GetTVSimpleImpulseMany k start end)) bounds state key
   res <- T.sequence $ (\set -> do
           let compressedSet = GZ.compress . encode $ (fmap periodicToTransform) . tvDataToEither <$> (classifySet period delta minPeriodicSize set)
           r <- uploadToS3 s3Conn (migrationRoutesS3Bucket master) fName stKey compressedSet >>= return . Right
