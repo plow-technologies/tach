@@ -15,7 +15,6 @@ import Control.Monad.STM
 import Control.Monad
 import Data.Foldable
 import Data.Text
-import Foreign.Storable
 import GHC.Generics
 import Network.HTTP.Types
 import Data.Maybe
@@ -23,11 +22,8 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString.UTF8 as UTF
 import qualified Data.ByteString.Lazy as L
-import qualified System.File.Tree as ST
 import qualified Network.AWS.S3Simple as S3
 import qualified Network.AWS.S3SimpleTypes as S3
-import qualified Data.Vector.Storable as VS
-import qualified Data.Vector as V
 import qualified Data.Sequence as SEQ
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
@@ -53,7 +49,7 @@ import Tach.Migration.Acidic.Types
 import Tach.Periodic
 import Tach.Transformable.Types
 import Tach.Migration.Types
-
+import Control.Monad.IO.Class
 -- Yesod and web related
 import Yesod
 import Yesod.Core
@@ -62,7 +58,6 @@ import Yesod.Core.Types
 -- Used for serializing and deserializing keys for indexing
 import qualified DirectedKeys as DK
 import qualified DirectedKeys.Types as DK
-import qualified Data.Serialize as S
 
 --Directly related Tach imports
 import Tach.Migration.Routes.Internal
@@ -75,18 +70,14 @@ import Data.Wavelets.Construction
 import Tach.Migration.Routes.Types
 import Tach.Migration.Foundation
 
-import Data.Acid.Cell.Types
+import qualified Data.Serialize as SER
+--import Data.Acid.Cell.Types
 
 mkYesodDispatch "MigrationRoutes" resourcesMigrationRoutes
 
-instance Yesod MigrationRoutes where
-  maximumContentLength _ (Just (ReceiveTimeSeriesR _)) = Just $ 2 * 1024 * 1024 * 1024 -- 2 gigabytes 
+instance Yesod MigrationRoutes where --changing default methods for larger upload sizes
+  maximumContentLength _ (Just (ReceiveTimeSeriesR _)) = Just $ 2 * 1024 * 1024 * 1024 -- 2 gigabytes for ReceiveTimeSeries
   maximumContentLength _  _ = Just $ 2  * 1024 * 1024 -- 2 mb 
-
-
-
--- instance VS.Storable TVNoKey where
- -- sizeOf x = (sizeOf . tvNkSimpleTime $ x) + (sizeOf . tvNkSimpleValue $ x)
 
 instance (ToJSON a ) => ToJSON (SEQ.Seq a) where
   toJSON = toJSON . toList
@@ -118,7 +109,7 @@ type MigrationTransportTV = MigrationTransport Text TVNoKey
 --   sMap <- newTVarIO (M.singleton dKey Idle)
 --   warp 3000 (MigrationRoutes "./teststate/" mMap (S.singleton . buildTestImpulseKey $  (DK.DKeyRaw (KeyPid 299) (KeySource "") (KeyDestination "") (KeyTime 0))) tempS3Conn sMap "http://cloud.aacs-us.com")
 --   where impulseStateMap state key = M.singleton key state
-
+listTest :: IO (S.Set TVNoKey)
 listTest = do
   impulseState <- openLocalStateFrom "teststate" emptyStore
   eRes <- query' impulseState (GetTVSimpleImpulseMany (buildTestImpulseKey (DK.DKeyRaw (KeyPid 299) (KeySource "") (KeyDestination "") (KeyTime 0))) (ImpulseStart (-4879536533031178240)) (ImpulseEnd 5364650883968821760))
@@ -146,8 +137,8 @@ getListDataR stKey = do
       eDKey = DK.decodeKey (C.pack stKey) :: (Either String (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime))
       ePidkey = unKeyPid . DK.getSimpleKey <$> eDKey
   eState <- T.sequence $ (\dKey -> liftIO $ attemptLookupInsert acidCell dKey (stateMap master)) <$> eDKey
-  eRes <- T.sequence $ (\state pidKey key -> 
-                              query' state (GetTVSimpleImpulseMany (ImpulseKey key) (ImpulseStart minBound) (ImpulseEnd maxBound))) <$> eState <*> ePidkey <*> eDKey
+  eRes <- T.sequence $ (\state key -> 
+                              query' state (GetTVSimpleImpulseMany (ImpulseKey key) (ImpulseStart minBound) (ImpulseEnd maxBound))) <$> eState <*> eDKey
   case eRes of
     Left s -> return . toJSON $ show s ++ show ePidkey
     Right (Left e) -> return . toJSON . show $ e
@@ -177,7 +168,7 @@ eitherToMaybe (Right b) = Just b
 
 showLeft :: (Show a) => Either a b -> Either String b
 showLeft (Left s) = Left . show $ s
-showLeft (Right a) = Right a
+showLeft (Right x) = Right x
 
 -- | Kills a node gracefully by closing the acid state
 getKillNodeR :: Handler Value
@@ -201,8 +192,7 @@ getKillNodeR = do
   return . toJSON $ killing
   where killing :: Text
         killing = "Killing"
-        elemToPath :: IncomingKey -> FilePath
-        elemToPath key = UTF.toString $ BS.append (DK.encodeKey key) "/Archive" --Possibly find a way to make this a little safer?
+
 
 getStartArchiveR :: Handler Value
 getStartArchiveR = do
@@ -217,6 +207,8 @@ getStartArchiveR = do
     _ -> do
       return . toJSON $ gc
 
+
+checkAndProcessGCState :: MonadHandler m => MigrationRoutes -> m ()
 checkAndProcessGCState master = do
   let gcState = (migrationRoutesGCState master)
   gcStatus <- liftIO $ readTVarIO gcState
@@ -240,7 +232,7 @@ getTotalCountR :: Handler Value
 getTotalCountR = do
   master <- getYesod
   let acidCell = (migrationRoutesAcidCell master)
-  res <- liftIO $ traverseWithKeyTVSimpleImpulseTypeStoreAC acidCell (\_ key@(DK.DKeyRaw (KeyPid pid) _ _ _) state -> do
+  res <- liftIO $ traverseWithKeyTVSimpleImpulseTypeStoreAC acidCell (\_ key state -> do
     eSetSize <- query' state (GetTVSimpleImpulseSize (ImpulseKey key))
     return $ eitherToMaybe $ (\size -> size) <$> eSetSize
     )
@@ -257,26 +249,20 @@ gcAllStates gcState acidCell statesFP = do
         atomically $ writeTVar gcState GCRunning
         dir <- FS.getWorkingDirectory
         liftIO . Prelude.putStrLn $ "GC acid-cell archiving"
-        archiveAndHandleTVSimpleImpulseTypeStoreAC acidCell (\fp state -> do
+        archiveAndHandleTVSimpleImpulseTypeStoreAC acidCell (\_ state -> do
           return state)
         liftIO . Prelude.putStrLn $ "GC traversing"
-        stateKeyList <- traverseWithKeyTVSimpleImpulseTypeStoreAC acidCell (\_ key state -> async $ gcSingleState (dir FP.</> (OS.fromText statesFP)) key state)
+        let dirToStates = dir FP.</> (OS.fromText statesFP)
+        stateKeyList <- traverseWithKeyTVSimpleImpulseTypeStoreAC acidCell (\_ key _ -> async $ gcSingleState dirToStates key)
         liftIO . Prelude.putStrLn $ "GC waiting"
         T.traverse wait stateKeyList
-        -- asyncTraverseGroup (M.elems stateKeyList) (dir FP.</> (OS.fromText statesFP))
         liftIO . Prelude.putStrLn $ "GC done"
         atomically $ writeTVar gcState GCIdle
         return ()
     return ()
 
---asyncTraverseGroup statesWKey statesFP = do
---  let grouped = groupUp 16 statesWKey
---  allRes <- T.traverse (\states -> do
---    aRes <- T.traverse (\(state,key) -> async $ gcSingleState statesFP key state) states
---    T.traverse wait aRes) grouped
---  return ()
-
-gcSingleState dir key state = do
+gcSingleState :: (SER.Serialize datetime, SER.Serialize destination, SER.Serialize source, SER.Serialize key) => OS.FilePath -> DK.DirectedKeyRaw key source destination datetime -> IO ()
+gcSingleState dir key = do
   let fullDir = dir FP.</> (OS.fromText . encodeDirectedKeyRaw $ key) FP.</> (OS.fromText "Archive")
   print fullDir
   isDir <- FS.isDirectory fullDir
@@ -310,9 +296,7 @@ postReceiveTimeSeriesR size = do
     Left _ -> sendResponseStatus status501 $ toJSON err 
     Right _ -> do
       sendResponseStatus status201 $ toJSON size
-  where end :: String
-        end = "Ended"
-        err :: String
+  where err :: String
         err = "Error!"
 
 
@@ -322,61 +306,53 @@ updateMigrationTransports :: MonadHandler m =>
      -> MigrationTransportTV
      -> m ()
 updateMigrationTransports master acidCell transport = do
-  let eDKey@(Right (DK.DKeyRaw (KeyPid p) (KeySource s) (KeyDestination d) (KeyTime t))) = DK.decodeKey (C.pack stKey) :: (Either String (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime))
+  let eDKey@(Right (DK.DKeyRaw {..})) = DK.decodeKey (C.pack stKey) :: (Either String (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime))
       stKey = T.unpack . key $ transport -- get the possible dKey from the transport
   eState <- T.sequence $ (\dKey -> liftIO $ attemptLookupInsert acidCell dKey (stateMap master)) <$> eDKey -- Get the acid-cell if it exists
   res <- T.sequence $ (\state dKey -> saveAndUploadState master stKey state dKey (tvNkList transport)) <$> eState <*> eDKey -- If there is a state, save and upload the data
   return ()
 
 
-saveAndUploadState :: MonadHandler m => MigrationRoutes
-     -> String
-     -> AcidState
-          (EventState InsertManyTVSimpleImpulse)
-     -> DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime
-     -> [TVNoKey]
-     -> m ()
+saveAndUploadState :: MonadHandler m =>
+                            MigrationRoutes
+                            -> String
+                            -> AcidState (EventState GetTVSimpleImpulseSize)
+                            -> DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime
+                            -> [TVNoKey]
+                            -> m (Either () ())
 saveAndUploadState master stKey state dKey tvNkList = do
   let destination = (migrationRoutesDestination master)
-  case dKey of
-    key@(DK.DKeyRaw {getDest = destination}) -> do
-      handleInsert master stKey state (ImpulseKey key) tvNkList
-    otherwise -> do
+  if (destination == (UTF.toString . unKeyDestination . DK.getDest $ dKey))
+    then handleInsert master stKey state (ImpulseKey dKey) tvNkList
+    else do
       sendResponseStatus status501 $ toJSON incorrectDestination
-      return ()
+      return . Left $ ()
       where incorrectDestination :: String
             incorrectDestination = "Incorrect destination"
 
 
-
--- handleInsert :: (MonadHandler m) => MigrationRoutes 
---                                      -> String 
---                                      -> AcidState (EventState InsertManyTVSimpleImpulse) 
---                                      -> TVKey
---                                      -> [TVNoKey] 
---                                      -> m (EventResult InsertManyTVSimpleImpulse)
-handleInsert master stKey state key@(ImpulseKey dKey) tvSet = do
+handleInsert :: (MonadIO m, Functor m) =>
+                      MigrationRoutes
+                      -> String
+                      -> AcidState (EventState GetTVSimpleImpulseSize)
+                      -> ImpulseKey
+                           (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime)
+                      -> [TVNoKey]
+                      -> m (Either () ())
+handleInsert master stKey state key tvSet = do
   ePreSetSize <- query' state (GetTVSimpleImpulseSize key)
   _ <- update' state (InsertManyTVSimpleImpulse key (S.fromList tvSet)) -- insert the list into the set
   eSetSize <- query' state (GetTVSimpleImpulseSize key)                 -- get the set size and bounds
   void . liftIO . T.sequence $ checkCreateCheckpoint state <$> ePreSetSize <*> eSetSize
   eBounds <- query' state (GetTVSimpleImpulseTimeBounds key)
-  -- liftIO . Prelude.putStrLn $ ("---------------------------------------------------------------------" :: String) ++ (show eSetSize) ++ (show . DK.encodeKey $ dKey)
-  --liftIO $ print "13"
   res <- T.sequence $ (\size bounds -> checkAndUpload master state stKey key size bounds) <$> eSetSize <*> eBounds
   case res of
     Left _ -> do
-      -- sendResponseStatus status500 $ toJSON err
-      return ()
+      return . Left $ ()
     Right suc -> do
-      -- sendResponseStatus status201 $ toJSON done
-      return ()
-  return ()
-  where err :: String
-        err = "ERROR"
-        done :: String
-        done = "DONE"
+      return . Right $ suc
 
+checkCreateCheckpoint :: (MonadIO m, Eq a) => AcidState st -> a -> a -> m ()
 checkCreateCheckpoint state preSize postSize = do
   if (preSize == postSize)
     then return ()
@@ -385,9 +361,7 @@ checkCreateCheckpoint state preSize postSize = do
       liftIO $ createArchive state
 
 
-checkAndUpload
-  :: (MonadIO m, Show a2, Show a1, Show a, Ord a2, Num a2,
-      Functor m) =>
+checkAndUpload :: (MonadIO m, Show a2, Show a1, Show a, Ord a2, Num a2, Functor m) =>
      MigrationRoutes
      -> AcidState (EventState GetTVSimpleImpulseTimeBounds)
      -> String
@@ -395,8 +369,7 @@ checkAndUpload
      -> a2
      -> (ImpulseStart a, ImpulseEnd a1)
      -> m ()
-checkAndUpload master state stKey key@(ImpulseKey dKey) size (ImpulseStart start, ImpulseEnd end) = do
-  -- liftIO . Prelude.putStrLn . show $ size
+checkAndUpload master state stKey key@(ImpulseKey dKey) size bounds@(ImpulseStart start, ImpulseEnd end) = do
   if (size >= 50000)
     then do
       sMap <- liftIO . atomically $ readTMVar tmMap
@@ -405,70 +378,94 @@ checkAndUpload master state stKey key@(ImpulseKey dKey) size (ImpulseStart start
           liftIO $ atomically $ do
             tsMap <- takeTMVar tmMap
             putTMVar tmMap (M.insert dKey Uploading tsMap)
-          void $ liftIO . forkIO . void $ uploadState master (s3Conn master) state stKey fName key 15 1 100
+          -- void $ liftIO . forkIO . void $ uploadState master (s3Conn master) state stKey fName key 15 1 100 bounds
           void $ liftIO $ Prelude.putStrLn "Starting upload"
           void $ liftIO $ createCheckpoint state
-          -- sendResponseStatus status201 $ toJSON done
         otherwise -> do
-          --void $ liftIO $ Prelude.putStrLn "NOT STARTING UPLOAD"
-          void $ liftIO $ createCheckpoint state
-          -- sendResponseStatus status201 $ toJSON err
+          return ()
     else do
-      --void $ liftIO $ Prelude.putStrLn "NOT STARTING UPLOAD"
-      void $ liftIO $ createCheckpoint state
-      -- sendResponseStatus status201 $ toJSON err
+      return ()
   where
     fName = (show start) ++ "_" ++ (show end)
-    err :: String
-    err = "Error"
-    done :: String
-    done = "Done"
     tmMap = stateMap master
 
 
- --classify, compress, upload
-uploadState :: MigrationRoutes  
-                              -> S3.S3Connection 
-                              -> AcidState (EventState GetTVSimpleImpulseTimeBounds)
-                              -> String
-                              -> String
-                              -> TVKey
-                              -> Int
-                              -> Int
-                              -> Int
-                              -> IO (Either String ())
-uploadState master s3Conn state stKey fName key@(ImpulseKey dKey) period delta minPeriodicSize = do
-  bounds <- query' state (GetTVSimpleImpulseTimeBounds key)
-  case bounds of
-    (Left _) -> return $ Left "Error retrieving bounds"
-    (Right (lower,upper)) -> do
-      eSet <- query' state (GetTVSimpleImpulseMany key lower upper)
-      case eSet of
-        Left _ -> return $ Left "Error retrieving set"
-        Right set -> do
+uploadState :: MigrationRoutes
+                     -> S3.S3Connection
+                     -> AcidState (EventState DeleteManyTVSimpleImpulse)
+                     -> String
+                     -> String
+                     -> ImpulseKey
+                          (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime)
+                     -> Int
+                     -> Int
+                     -> Int
+                     -> (ImpulseStart TVSStart, ImpulseEnd TVSEnd)
+                     -> IO (Either String ())
+uploadState master s3Conn state stKey fName key@(ImpulseKey dKey) period delta minPeriodicSize bounds = do
+  --eSet <- (\(ImpulseStart start,ImpulseEnd end) -> query' state (GetTVSimpleImpulseMany key start end)) bounds
+  eSet <- (\(ImpulseStart start,ImpulseEnd end) s k -> query' s (GetTVSimpleImpulseMany k start end)) bounds state key
+  res <- T.sequence $ (\set -> do
           let compressedSet = GZ.compress . encode $ (fmap periodicToTransform) . tvDataToEither <$> (classifySet period delta minPeriodicSize set)
-          res <- uploadToS3 s3Conn (migrationRoutesS3Bucket master) fName stKey compressedSet >>= return . Right
-          case res of
+          r <- uploadToS3 s3Conn (migrationRoutesS3Bucket master) fName stKey compressedSet >>= return . Right
+          case r of
             (Right (S3.S3Success _)) -> do
-              Prelude.putStrLn "Uploaded to s3! -------||||||||||||------------------------------"
+              Prelude.putStrLn "Uploaded to S3"
               removeState key set
               atomically $ do
-                  tsMap <- takeTMVar (stateMap master)
-                  putTMVar (stateMap master) (M.insert dKey Idle tsMap)
-              return $ Right ()
-              where removeState k s = do
-                      deleteResult <- update' state (DeleteManyTVSimpleImpulse k s)
-                      createCheckpoint state
-                      case deleteResult of
-                        Left _ -> do
-                          --Prelude.putStrLn "NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT  -------------------------------------------//////////////////////0000000000000"
-                          removeState k s
-                        Right _ -> do
-                          Prelude.putStrLn "DELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETED //////////////////////////////***************************************\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"
-                          return . Right $ ()
-            (Right (S3.S3Error _)) -> do
-              uploadState master s3Conn state stKey fName key period delta minPeriodicSize
-          return . Right $ ()
+                tsMap <- takeTMVar (stateMap master)
+                putTMVar (stateMap master) (M.insert dKey Idle tsMap)
+              return $ Just ()
+            otherwise -> do
+              atomically $ do
+                tsMap <- takeTMVar (stateMap master)
+                putTMVar (stateMap master) (M.insert dKey Idle tsMap)
+              return Nothing) <$> (eitherToMaybe eSet)
+  case res of
+    (Just _) -> return $ Right ()
+    Nothing -> return $ Left "Error uploading state"
+  where removeState k s = do
+          deleteResult <- update' state (DeleteManyTVSimpleImpulse k s)
+          createCheckpoint state
+          case deleteResult of
+            Left _ -> do
+              removeState k s
+            Right _ -> do
+              Prelude.putStrLn "Deleted set from state"
+              return . Right $ ()
+        eitherShow :: (Show a) => Either a b -> Either String b
+        eitherShow (Right x) = Right x
+        eitherShow (Left y) = Left . show $ y
+  --case bounds of
+  --  (Left _) -> return $ Left "Error retrieving bounds"
+  --  (Right (lower,upper)) -> do
+  --    eSet <- query' state (GetTVSimpleImpulseMany key lower upper)
+  --    case eSet of
+  --      Left _ -> return $ Left "Error retrieving set"
+  --      Right set -> do
+  --        let compressedSet = GZ.compress . encode $ (fmap periodicToTransform) . tvDataToEither <$> (classifySet period delta minPeriodicSize set)
+  --        res <- uploadToS3 s3Conn (migrationRoutesS3Bucket master) fName stKey compressedSet >>= return . Right
+  --        case res of
+  --          (Right (S3.S3Success _)) -> do
+  --            Prelude.putStrLn "Uploaded to s3! -------||||||||||||------------------------------"
+  --            removeState key set
+  --            atomically $ do
+  --                tsMap <- takeTMVar (stateMap master)
+  --                putTMVar (stateMap master) (M.insert dKey Idle tsMap)
+  --            return $ Right ()
+  --            where removeState k s = do
+  --                    deleteResult <- update' state (DeleteManyTVSimpleImpulse k s)
+  --                    createCheckpoint state
+  --                    case deleteResult of
+  --                      Left _ -> do
+  --                        --Prelude.putStrLn "NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT NOT  -------------------------------------------//////////////////////0000000000000"
+  --                        removeState k s
+  --                      Right _ -> do
+  --                        Prelude.putStrLn "DELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETEDDELETED //////////////////////////////***************************************\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"
+  --                        return . Right $ ()
+  --          (Right (S3.S3Error _)) -> do
+  --            uploadState master s3Conn state stKey fName key period delta minPeriodicSize
+  --        return . Right $ ()
 
 
 uploadToS3 :: S3.S3Connection -> String -> String -> String -> L.ByteString -> IO (S3.S3Result ())

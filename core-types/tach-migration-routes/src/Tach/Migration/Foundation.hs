@@ -1,11 +1,7 @@
-{-# LANGUAGE QuasiQuotes, TemplateHaskell, TypeFamilies, RecordWildCards, OverloadedStrings, DeriveGeneric, GeneralizedNewtypeDeriving, NoMonomorphismRestriction #-}
+{-# LANGUAGE QuasiQuotes, TemplateHaskell, TypeFamilies, RecordWildCards, OverloadedStrings, GeneralizedNewtypeDeriving, NoMonomorphismRestriction #-}
 module Tach.Migration.Foundation where
 
 --General Haskell imports
-import Control.Concurrent.STM.TVar
-import GHC.Generics
-import qualified Data.ByteString as BS
-import qualified Network.AWS.S3Simple as S3
 import Data.Text
 import qualified Data.Text.Encoding as TE
 import Data.Serialize
@@ -20,33 +16,25 @@ import qualified Data.Map as M
 import qualified Data.Vector as V
 
 --External Tach imports
-import Tach.Impulse.Types.TimeValue
 import Tach.Impulse.Types.Impulse
 import Tach.Migration.Acidic.Types
-import Tach.Periodic
-import Tach.Transformable.Types
 
 -- Yesod and web related
-import Yesod hiding (unKey)
-import Yesod.Core
-import Yesod.Core.Types
 
 -- Used for serializing and deserializing keys for indexing
 import qualified DirectedKeys as DK
 import qualified DirectedKeys.Types as DK
 import qualified Data.Serialize as S
 
---Directly related Tach imports
-import Tach.Migration.Routes.Internal
-
 --Wavelets and Compression
-import qualified Codec.Compression.GZip as GZ
 import Data.Wavelets.Construction
 import Tach.Migration.Types
 
 import Data.Acid.Cell
 import Tach.Acid.Impulse.Cruds
 import Tach.Migration.Routes.Types
+import Filesystem.Path
+import Data.Typeable
 
 getKeyFcn :: TVSimpleImpulseTypeStore
                    -> DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime
@@ -85,3 +73,82 @@ createTVSimpleStoreFromKey :: DK.DirectedKeyRaw KeyPid KeySource KeyDestination 
 createTVSimpleStoreFromKey key = TVSimpleImpulseTypeStore (ImpulseSeries (ImpulseKey key) (IPeriodParameterized (V.empty)) (ImpulseStart 0) (ImpulseEnd 0) (ImpulseRep S.empty))
 
 $(makeAcidCell 'tvSimpleStoreCellKey 'initTVSimpleStore  ''TVSimpleImpulseTypeStore)
+
+archiveAndHandleTVSimpleImpulseTypeStoreAC :: AcidCell
+                                                KeyPid
+                                                KeySource
+                                                KeyDestination
+                                                KeyTime
+                                                st1
+                                                (AcidState st2)
+                                              -> (Filesystem.Path.FilePath
+                                                  -> AcidState st1 -> IO (AcidState st1))
+                                              -> IO
+                                                   (M.Map
+                                                      (DK.DirectedKeyRaw
+                                                         KeyPid
+                                                         KeySource
+                                                         KeyDestination
+                                                         KeyTime)
+                                                      (AcidState st1))
+createCheckpointAndCloseTVSimpleImpulseTypeStoreAC :: (SafeCopy st1,
+                                                       Data.Typeable.Typeable st1) =>
+                                                      AcidCell t1 t2 t3 t4 st (AcidState st1)
+                                                      -> IO ()
+traverseWithKeyTVSimpleImpulseTypeStoreAC :: AcidCell t t1 t2 t3 t4 t5
+                                             -> (CellKey
+                                                   KeyPid
+                                                   KeySource
+                                                   KeyDestination
+                                                   KeyTime
+                                                   TVSimpleImpulseTypeStore
+                                                 -> DK.DirectedKeyRaw t t1 t2 t3
+                                                 -> AcidState t4
+                                                 -> IO b)
+                                             -> IO (M.Map (DK.DirectedKeyRaw t t1 t2 t3) b)
+foldlWithKeyTVSimpleImpulseTypeStoreAC :: AcidCell t t1 t2 t3 t4 t5
+                                          -> (CellKey
+                                                KeyPid
+                                                KeySource
+                                                KeyDestination
+                                                KeyTime
+                                                TVSimpleImpulseTypeStore
+                                              -> DK.DirectedKeyRaw t t1 t2 t3
+                                              -> AcidState t4
+                                              -> IO b
+                                              -> IO b)
+                                          -> IO b
+                                          -> IO b
+getTVSimpleImpulseTypeStoreAC :: AcidCell KeyPid KeySource KeyDestination KeyTime t t1
+                                 -> TVSimpleImpulseTypeStore -> IO (Maybe (AcidState t))
+
+deleteTVSimpleImpulseTypeStoreAC :: AcidCell
+                                      KeyPid
+                                      KeySource
+                                      KeyDestination
+                                      KeyTime
+                                      t
+                                      (AcidState (EventState DeleteAcidCellPathFileKey))
+                                    -> TVSimpleImpulseTypeStore -> IO ()
+
+insertTVSimpleImpulseTypeStoreAC :: AcidCell
+                                      KeyPid
+                                      KeySource
+                                      KeyDestination
+                                      KeyTime
+                                      TVSimpleImpulseTypeStore
+                                      (AcidState (EventState InsertAcidCellPathFileKey))
+                                    -> TVSimpleImpulseTypeStore
+                                    -> IO (AcidState TVSimpleImpulseTypeStore)
+initializeTVSimpleImpulseTypeStoreAC :: Text
+                                        -> IO
+                                             (AcidCell
+                                                KeyPid
+                                                KeySource
+                                                KeyDestination
+                                                KeyTime
+                                                TVSimpleImpulseTypeStore
+                                                (AcidState CellKeyStore))
+
+updateTVSimpleImpulseTypeStoreAC :: AcidCell KeyPid KeySource KeyDestination KeyTime t5 t6
+                                          -> AcidState t5 -> TVSimpleImpulseTypeStore -> IO ()
