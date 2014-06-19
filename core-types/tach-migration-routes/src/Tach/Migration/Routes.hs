@@ -162,7 +162,7 @@ getKillNodeR = do
   master <- getYesod
   let acidCell = (migrationRoutesAcidCell master)
   liftIO $ do
-    archiveAndHandleTVSimpleImpulseTypeStoreAC acidCell (\ _ state -> return state)
+    --archiveAndHandleTVSimpleImpulseTypeStoreAC acidCell (\ _ state -> return state)
     createCheckpointAndCloseTVSimpleImpulseTypeStoreAC acidCell
   --     migrationElems = M.elems migrationMap
   --     migrationKeys = M.keys migrationMap
@@ -246,8 +246,8 @@ gcAllStates gcState acidCell statesFP = do
         atomically $ writeTVar gcState GCRunning
         dir <- FS.getWorkingDirectory
         liftIO . Prelude.putStrLn $ "GC acid-cell archiving"
-        archiveAndHandleTVSimpleImpulseTypeStoreAC acidCell (\_ state -> do
-          return state)
+        --archiveAndHandleTVSimpleImpulseTypeStoreAC acidCell (\_ state -> do
+        --  return state)
         liftIO . Prelude.putStrLn $ "GC traversing"
         let dirToStates = dir FP.</> (OS.fromText statesFP)
         stateKeyList <- traverseWithKeyTVSimpleImpulseTypeStoreAC acidCell (\_ key _ -> async $ gcSingleState dirToStates key)
@@ -362,7 +362,7 @@ checkCreateCheckpoint state preSize postSize = do
     then return ()
     else do
       --liftIO $ createCheckpoint state
-      liftIO $ E.finally (createCheckpoint state) (createArchive state >> createCheckpoint state)
+      liftIO $ E.finally (createArchive state) (createCheckpoint state)
 
 
 checkAndUpload :: (MonadIO m, Functor m) =>
@@ -385,7 +385,7 @@ checkAndUpload master state stKey key@(ImpulseKey dKey) size bounds@(ImpulseStar
           void $ liftIO . forkIO . void $ uploadState master (s3Conn master) state stKey fName key 15 1 100 bounds
           void $ liftIO $ Prelude.putStrLn "Starting upload"
           --liftIO $ createCheckpoint state
-          liftIO $ E.finally (createCheckpoint state) (createArchive state >> createCheckpoint state)
+          liftIO $ E.finally (createArchive state) (createCheckpoint state)
         _ -> do
           return ()
     else do
@@ -431,7 +431,7 @@ uploadState master s3Conn state stKey fName key@(ImpulseKey dKey) period delta m
   where removeState k s = do
           deleteResult <- update' state (DeleteManyTVSimpleImpulse k s)
           --liftIO $ createCheckpoint state
-          liftIO $ E.finally (createCheckpoint state) (createArchive state >> createCheckpoint state)
+          liftIO $ E.finally (createArchive state) (createCheckpoint state)
           case deleteResult of
             Left _ -> do
               removeState k s
@@ -503,7 +503,7 @@ attemptLookupInsert cell key tmMap = do
         tsMap <- takeTMVar tmMap
         putTMVar tmMap (M.insert key Idle tsMap)
       --liftIO $ createCheckpoint st
-      liftIO $ E.finally (createCheckpoint st) (createArchive st >> createCheckpoint st)
+      liftIO $ E.finally (createArchive st) (createCheckpoint st)
       return st
 
 
