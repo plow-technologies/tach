@@ -1,4 +1,7 @@
-{-# LANGUAGE OverloadedStrings, DeriveGeneric, DeriveDataTypeable #-}
+{-# LANGUAGE CPP, DeriveDataTypeable, FlexibleContexts,OverloadedStrings,
+  GeneralizedNewtypeDeriving, MultiParamTypeClasses,
+   TemplateHaskell, TypeFamilies, RecordWildCards, DeriveGeneric, DeriveDataTypeable #-}
+
 module Tach.Impulse.Types.TimeValue where 
 
 import GHC.Generics
@@ -6,9 +9,17 @@ import Data.Typeable
 import Tach.Impulse.Types.Impulse 
 import Data.Typeable (Typeable)
 import Data.Vector
-import Tach.Migration.Types
 import qualified DirectedKeys as DK
 import qualified DirectedKeys.Types as DK
+import qualified Data.Serialize as S
+import qualified Data.ByteString as BS
+
+-- Data for dealing with incoming requests
+newtype KeyPid = KeyPid { unKeyPid :: Int } deriving (Eq, Ord, Show,S.Serialize, Generic)
+newtype KeySource = KeySource { unKeySource :: BS.ByteString } deriving (Eq, Ord, Show,S.Serialize, Generic)
+newtype KeyDestination = KeyDestination { unKeyDestination :: BS.ByteString } deriving (Eq, Ord, Show, S.Serialize, Generic)
+newtype KeyTime = KeyTime { unKeyTime :: Integer } deriving (Eq, Ord, Show, S.Serialize, Generic)
+
 
 type TVKey = ImpulseKey (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime)
 type TVTypeOfTime = Int

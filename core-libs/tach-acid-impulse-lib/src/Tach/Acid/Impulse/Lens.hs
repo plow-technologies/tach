@@ -24,17 +24,11 @@ import Tach.Migration.Acidic.Types
 
 
 makeClassy_ ''TVSimpleImpulseTypeStore 
-
 makeClassy_ ''TVNoKey
-
 makeClassy_ ''ImpulseSeries 
-
 makeClassy_ ''ImpulseKey
-
 makeClassy_ ''ImpulseStart 
-
 makeClassy_ ''ImpulseEnd 
-
 makeClassy_ ''ImpulseRep
 
 

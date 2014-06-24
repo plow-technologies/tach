@@ -25,6 +25,7 @@ import Data.Text.Read (decimal)
 import Data.Text (unpack)
 import Data.Time
 import Tach.Query.Foundation
+import Network.HTTP.Types
 
 
 mkYesodDispatch "QueryYesod" resourcesQueryYesod
@@ -36,10 +37,12 @@ postParameterListerR = do
   eQuery <- parseJsonBody :: Handler (Result ParameterQuery)
   case eQuery of
     (Error _) -> do
-      return . toJSON $ ([] :: [Int])
+      sendResponseStatus status501 (toJSON parseError)
     (Success query) -> do
       othList <- getHistoryParameterList (mongoConf master) query
       return . toJSON $ othList
+  where parseError :: String
+        parseError = "Error parsing query"
 
 
 getHistoryParameterList :: MongoDBConf -> ParameterQuery -> Handler [OnpingTagHistory]
@@ -49,7 +52,7 @@ getHistoryParameterList dbConf phco = do
       parameters = entityVal <$> (E.rights $ PM.docToEntityEither <$> rawBsonParameters)
       etpid = decimal.phistoryPID $ phco
   case etpid of
-    Left _ -> return []
+    Left _ -> sendResponseStatus status501 (toJSON errMessage) 
     Right (pid, _) -> return parameters
   where runStagedQuery :: (MonadIO m, MonadBaseControl IO m) => (M.Selector -> PM.Action m [M.Document]) -> [M.Document] -> PM.Action m [M.Document] 
         runStagedQuery _ [] = return []
@@ -58,6 +61,8 @@ getHistoryParameterList dbConf phco = do
           lst <- f ["$or" M.=: (take mx qList)]
           lst2 <- runStagedQuery f (drop mx qList)   
           return $ lst ++ lst2 
+        errMessage :: String
+        errMessage = "Error querying DB"
 
 getAllRaw :: (MonadIO m, MonadBaseControl IO m) => M.Selector -> PM.Action m [M.Document]
 getAllRaw q = M.rest =<< M.find (M.select q "onping_tag_history")

@@ -1,0 +1,58 @@
+Name:                   tach-db-acidic
+Version:                0.0.0
+Author:                 Kevin Cotrone <kevincotrone@gmail.com>
+Maintainer:             Kevin Cotrone <kevincotrone@gmail.com>
+License:                BSD3
+License-File:           LICENSE
+-- Synopsis:               
+-- Description:            
+Cabal-Version:          >= 1.10
+Build-Type:             Simple
+
+Library
+  Default-Language:     Haskell2010
+  HS-Source-Dirs:       src
+  GHC-Options:          -Wall
+  Exposed-Modules:      Tach.DB.Acid
+                        Tach.DB.Acid.Raw
+                        Tach.DB.Acid.Raw.Create
+                        Tach.DB.Acid.Raw.Delete
+                        Tach.DB.Acid.Raw.Read
+                        Tach.DB.Acid.Raw.Types
+                        Tach.DB.Acid.Transform
+                        Tach.DB.Acid.Transform.Create
+                        Tach.DB.Acid.Transform.Delete
+                        Tach.DB.Acid.Transform.Read
+                        Tach.DB.Acid.Transform.Types
+                        Tach.DB.Acid.Types
+                        Tach.DB.Acid.Raw.Lens
+  Other-Modules:        Tach.DB.Acid.Internal
+                       ,Tach.DB.Acid.Raw.Internal
+  Build-Depends:        base >= 4 && < 5
+                      , acid-state
+                      , safecopy
+                      , containers
+                      , vector
+                      , bytestring
+                      , directed-keys
+                      , tach-impulse-series-types >= 0.1.11
+                      , basic-prelude
+                      , cereal == 0.4.0.1
+                      , lens
+                      , mtl
+                      , aeson
+
+
+Test-Suite spec
+  Type:                 exitcode-stdio-1.0
+  Default-Language:     Haskell2010
+  Hs-Source-Dirs:       src
+                      , test
+  Ghc-Options:          -Wall
+  Main-Is:              Spec.hs
+  Build-Depends:        base
+                      , hspec
+
+Source-Repository head
+  Type:                 git
+--  Location:             
