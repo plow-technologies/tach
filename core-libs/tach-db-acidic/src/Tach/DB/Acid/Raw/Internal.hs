@@ -35,6 +35,7 @@ import           Tach.Impulse.Types.Impulse
 import           Tach.Impulse.Types.TimeValue
 
 
+-- | Generalized function to modify the underlying set of a tvstore
 modifyTVRawStoreWith :: (Set TVNoKey -> Set TVNoKey) -> TVKey -> Update TVSimpleRawStore (Either ErrorValue SuccessValue)
 modifyTVRawStoreWith withFunc key = do
   st@(TVSimpleRawStore (ImpulseSeries {impulseSeriesKey = k})) <- get
@@ -44,6 +45,8 @@ modifyTVRawStoreWith withFunc key = do
       | otherwise -> return . Left . ErrorValue $ ErrorIncorrectKey
             where (newSt, sz) = updateTVRawStoreWith st withFunc
 
+-- | Only when the key is correct this is used to modify the store and return a new store after
+-- applying the function and updating the bounds
 updateTVRawStoreWith :: TVSimpleRawStore -> (Set TVNoKey -> Set TVNoKey) -> (TVSimpleRawStore, Int)
 updateTVRawStoreWith store withFunc = (st'', sz)
   where st' = over _unTVSimpleRawStore insertTimeValue store
@@ -54,6 +57,8 @@ updateTVRawStoreWith store withFunc = (st'', sz)
         updateHigher = (set (_impulseSeriesEnd . _unEnd) (tvNkSimpleTime $ findMax newSet) )
         updateLower = (set (_impulseSeriesStart . _unStart) (tvNkSimpleTime $ findMin newSet) )
 
+
+-- | Generalized function to read from a store
 readFromTVRawStoreWith :: TVKey -> (Set TVNoKey -> Either ErrorValue b) -> Query TVSimpleRawStore (Either ErrorValue b)
 readFromTVRawStoreWith key withFunc = queryFcn <$> ask
   where queryFcn st

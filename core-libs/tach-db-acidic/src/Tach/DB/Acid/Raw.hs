@@ -1,15 +1,19 @@
-{-# LANGUAGE CPP                        #-}
-{-# LANGUAGE DeriveDataTypeable         #-}
-{-# LANGUAGE DeriveGeneric              #-}
-{-# LANGUAGE FlexibleContexts           #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE RecordWildCards            #-}
-{-# LANGUAGE TemplateHaskell            #-}
-{-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE CPP, DeriveDataTypeable, FlexibleContexts,OverloadedStrings,
+  GeneralizedNewtypeDeriving, MultiParamTypeClasses, NoImplicitPrelude
+  , TemplateHaskell, TypeFamilies, RecordWildCards, DeriveGeneric, DeriveDataTypeable #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Tach.DB.Acid.Raw where
 
+import           Data.Acid
+import           Tach.DB.Acid.Raw.Types
+
+{- The seperated modules for Tach.DB.Acid.Raw -}
+import           Tach.DB.Acid.Raw.Create as Tach.DB.Acid.Raw
+import           Tach.DB.Acid.Raw.Delete as Tach.DB.Acid.Raw
+import           Tach.DB.Acid.Raw.Read   as Tach.DB.Acid.Raw
+import           Tach.DB.Acid.Raw.Types  as Tach.DB.Acid.Raw
+import           Tach.Impulse.Types.TimeValue  as Tach.DB.Acid.Raw
 
 {-
   The raw acid state holds a size limited set of TVNoKeys
@@ -22,14 +26,7 @@ module Tach.DB.Acid.Raw where
 -}
 
 
-import           Tach.DB.Acid.Transform.Create as Tach.DB.Acid.Raw
-import           Tach.DB.Acid.Transform.Delete as Tach.DB.Acid.Raw
-import           Tach.DB.Acid.Transform.Read   as Tach.DB.Acid.Raw
-import           Tach.DB.Acid.Transform.Types  as Tach.DB.Acid.Raw
-import           Tach.Impulse.Types.TimeValue  as Tach.DB.Acid.Raw
-
-
--- $(makeAcidic ''TVSimpleImpulseTypeStore [ 'insertTVSimpleImpulse , 'insertManyTVSimpleImpulse
---                                         , 'getTVSimpleImpulse    , 'getTVSimpleImpulseMany
---                                         , 'deleteTVSimpleImpulse , 'deleteManyTVSimpleImpulse
---                                         , 'getTVSimpleImpulseSize, 'getTVSimpleImpulseTimeBounds ])
+$(makeAcidic ''TVSimpleRawStore [ 'insertTVSimpleImpulseRaw, 'insertManyTVSimpleImpulseRaw
+                                , 'getTVSimpleImpulseRaw    , 'getManyTVSimpleImpulseRaw
+                                , 'deleteTVSimpleImpulseRaw , 'deleteManyTVSimpleImpulseRaw
+                                , 'getTVSimpleImpulseRawSize, 'getTVSimpleImpulseRawTimeBounds ])

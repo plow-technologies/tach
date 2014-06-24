@@ -8,9 +8,9 @@
 
 module Tach.DB.Acid.Raw.Read (
   getTVSimpleImpulseRaw
-, getTVSimpleImpulseManyRaw
+, getManyTVSimpleImpulseRaw
 , getTVSimpleImpulseRawSize
-, getTVSimpleImpulseTimeBounds
+, getTVSimpleImpulseRawTimeBounds
 ) where
 
 {- General Haskell related-}
@@ -35,8 +35,8 @@ import           Tach.Impulse.Types.TimeValueSeries (TVSEnd, TVSStart)
 getTVSimpleImpulseRaw :: TVKey -> Int -> Query TVSimpleRawStore (Either ErrorValue TVNoKey)
 getTVSimpleImpulseRaw key time = readFromTVRawStoreWith key (elookupLE (TVNoKey time 0.0))
 
-getTVSimpleImpulseManyRaw :: TVKey -> TVSStart -> TVSEnd -> Query TVSimpleRawStore (Either ErrorValue (Set TVNoKey))
-getTVSimpleImpulseManyRaw key start end
+getManyTVSimpleImpulseRaw :: TVKey -> TVSStart -> TVSEnd -> Query TVSimpleRawStore (Either ErrorValue (Set TVNoKey))
+getManyTVSimpleImpulseRaw key start end
     | unStart start <= unEnd end = readFromTVRawStoreWith key (\s -> Right . trimOff $ s)
     | otherwise = return . Left $ ErrorValue ErrorInvalidRange
       where
@@ -49,8 +49,8 @@ getTVSimpleImpulseManyRaw key start end
 getTVSimpleImpulseRawSize :: TVKey -> Query TVSimpleRawStore (Either ErrorValue Int)
 getTVSimpleImpulseRawSize key = readFromTVRawStoreWith key (\s -> Right . S.size $ s)
 
-getTVSimpleImpulseTimeBounds :: TVKey -> Query TVSimpleRawStore (Either ErrorValue (ImpulseStart Int, ImpulseEnd Int))
-getTVSimpleImpulseTimeBounds tk = queryFcn <$> ask
+getTVSimpleImpulseRawTimeBounds :: TVKey -> Query TVSimpleRawStore (Either ErrorValue (ImpulseStart Int, ImpulseEnd Int))
+getTVSimpleImpulseRawTimeBounds tk = queryFcn <$> ask
   where
     isKey (TVSimpleRawStore (ImpulseSeries {impulseSeriesKey = k})) = k == tk
     queryFcn st
