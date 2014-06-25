@@ -35,6 +35,6 @@ import           Tach.Impulse.Types.TimeValue
 deleteTVSimpleImpulseRaw :: TVKey -> TVNoKey -> Update TVSimpleRawStore (Either ErrorValue SuccessValue)
 deleteTVSimpleImpulseRaw key item = modifyTVRawStoreWith (S.delete item) key
 
--- | O(n * log n) Removes an a set from the given store and updates the bounds
+-- | O(n + m) Removes an a set from the given store and updates the bounds
 deleteManyTVSimpleImpulseRaw :: TVKey -> (S.Set TVNoKey) -> Update TVSimpleRawStore (Either ErrorValue SuccessValue)
-deleteManyTVSimpleImpulseRaw key items = modifyTVRawStoreWith (S.difference items) key
+deleteManyTVSimpleImpulseRaw key items = modifyTVRawStoreWith (\s -> s `S.difference` items) key
