@@ -16,6 +16,7 @@ module Tach.DB.Acid.Raw.Types where
 
 import           CorePrelude
 import           Data.SafeCopy                (base, deriveSafeCopy)
+import qualified Data.Vector                  as V
 import qualified DirectedKeys.Types           as DK
 import           GHC.Generics
 import           Tach.Impulse.Types.Impulse
@@ -27,8 +28,10 @@ import           Tach.Impulse.Types.TimeValue
 -}
 newtype TVSimpleRawStore = TVSimpleRawStore {
   unTVSimpleRawStore :: (ImpulseSeries (ImpulseKey (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime))
-                            (ImpulsePeriod (Vector Double) Int) (ImpulseStart Int) (ImpulseEnd Int) (ImpulseRep (Set TVNoKey)))
+                            (ImpulsePeriod (V.Vector Double) Int) (ImpulseStart Int) (ImpulseEnd Int) (ImpulseRep (Set TVNoKey)))
 } deriving (Typeable, Generic)
+
+--initialTVSimpleRawStore key = TVSimpleRawStore key
 
 $(deriveSafeCopy 0 'base ''DK.DirectedKeyRaw)
 

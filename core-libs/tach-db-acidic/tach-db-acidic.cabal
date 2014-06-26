@@ -52,6 +52,19 @@ Test-Suite spec
   Main-Is:              Spec.hs
   Build-Depends:        base
                       , hspec
+                      , acid-state
+                      , safecopy
+                      , containers
+                      , vector
+                      , bytestring
+                      , directed-keys
+                      , tach-impulse-series-types
+                      , basic-prelude
+                      , cereal
+                      , lens
+                      , mtl
+                      , aeson
+
 
 Source-Repository head
   Type:                 git
