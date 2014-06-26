@@ -30,18 +30,20 @@ With this type the worst case json serialization will be something like:
 {
   "Unlcassified":{
     "Unlcassified":{
-      "Classified": c
+      "Classified": toJSON c
     }
   }
 }
 ```
+where ```toJSON c``` is the serialized instance for ```c```
 
 and the best case json serialization will be:
 ```json
 {
-  "Classified": a
+  "Classified": toJSON a
 }
 ```
+where ```toJSON a``` is the serialized instance for ```a```
 
 With this method you are then able to change the data type from ```Classify (Classify (Classify () c) b) a``` to ```Classify (Classify (Classify d c) b) a``` (where ```d``` is any number of recursive ```Classify e f```) without compromising the previous serialization reads or writes.
 
@@ -55,11 +57,11 @@ Eventually serialization could become much longer:
         "Unlcassified":{
           ...
             ...
-              "Classified":z
+              "Classified": toJSON z
         }
       }
     }
   }
 }
 ```
-where ```z``` is the newest classification that has been added and the first classification that is tried.
+where ```toJSON z``` is the serialized instance for ```z``` and where ```z``` is the newest classification and that has been added and the first classification that is tried.
