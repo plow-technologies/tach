@@ -22,11 +22,11 @@ The typeclasses aim to provide a way of making the serialization and stored type
 instead of using a sum type at the top level.
 
 This is done with the ```Classify a b``` data type which is almost exactly like Either but wrapped to control the serialization.
-The types for Classify should start out as something like ```Classify (Classify (Classify () c) b) a``` where c is the first transform
-that is applied that might work, b is the second transform that might work and a is the default transform that will have to work.
+The types for Classify should start out as something like ```Classify (Classify (Classify () c) b) a``` where ```c``` is the first classification
+that is applied that might work, ```b``` is the second classification that might work and a is the default classification that will have to work.
 
 With this type the worst case json serialization will be something like:
-```
+```json
 {
   "Unlcassified":{
     "Unlcassified":{
@@ -37,7 +37,7 @@ With this type the worst case json serialization will be something like:
 ```
 
 and the best case json serialization will be:
-```
+```json
 {
   "Classified": a
 }
