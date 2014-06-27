@@ -20,9 +20,9 @@ data PeriodicFolding a = PeriodicFolding {
  ,timeValueData :: [TVData a]
 }
 
-tvDataToEither :: TVData a -> Either (APeriodicData a) (PeriodicData a)
-tvDataToEither (TVPeriodic x) = Right x
-tvDataToEither (TVAPeriodic x) = Left x
+tvDataToEither :: TVData a -> Either (S.Seq a) (PeriodicData a)
+tvDataToEither (TVPeriodic x) = Right $ x
+tvDataToEither (TVAPeriodic x) = Left . unAPeriodicData $ x
 
 --testData :: IO [TVData Double]
 --testData = do
@@ -39,7 +39,7 @@ combineAperiodic :: S.Seq (TVData a) -> S.Seq (TVData a)
 combineAperiodic = F.foldl' combineAperiodicFold S.empty
 
 classifyData :: (Num a, Ord a) => a -> a -> Int -> (b -> a) -> [b] -> ([TVData b])
-classifyData  period delta minPeriodicSize toNumFunc list = seqToList . combineAperiodic . (removePeriodicBelow minPeriodicSize) $ classifyPeriodic period delta toNumFunc (S.fromList list)
+classifyData  period delta minPeriodicSize toNumFunc list = F.toList . combineAperiodic . (removePeriodicBelow minPeriodicSize) $ classifyPeriodic period delta toNumFunc (S.fromList list)
 
 removePeriodicBelow :: Int -> S.Seq (TVData a) -> S.Seq (TVData a)
 removePeriodicBelow minSize list = (setAperiodicBelow minSize) <$> list

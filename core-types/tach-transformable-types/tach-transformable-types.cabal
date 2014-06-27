@@ -15,11 +15,15 @@ Library
   GHC-Options:          -Wall
   Exposed-Modules:      Tach.Transformable.Types
                         Tach.Transformable.Types.Transform
+                        Tach.Transformable.Types.Wavelet
+                        Tach.Transformable.Types.Impulse
   Other-Modules:        Tach.Transformable.Types.Internal
 
   Build-Depends:        base >= 4 && < 5
                       , tach-impulse-series-types == 0.1.11
                       , tach-periodic == 0.1.5
+                      , wavelets >= 0.1.7
+                      , containers >= 0.5.5.1
 
 
 Test-Suite spec

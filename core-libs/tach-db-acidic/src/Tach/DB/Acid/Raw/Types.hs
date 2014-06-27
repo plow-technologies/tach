@@ -31,7 +31,7 @@ newtype TVSimpleRawStore = TVSimpleRawStore {
                             (ImpulsePeriod (V.Vector Double) Int) (ImpulseStart Int) (ImpulseEnd Int) (ImpulseRep (Set TVNoKey)))
 } deriving (Typeable, Generic)
 
---initialTVSimpleRawStore key = TVSimpleRawStore key
+initialTVSimpleRawStore key = TVSimpleRawStore (ImpulseSeries (ImpulseKey key) (ImpulsePeriod V.empty 0) (ImpulseStart start) (ImpulseEnd end) (Impulse) 
 
 $(deriveSafeCopy 0 'base ''DK.DirectedKeyRaw)
 
