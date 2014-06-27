@@ -24,6 +24,7 @@ Library
                       , tach-periodic == 0.1.5
                       , wavelets >= 0.1.7
                       , containers >= 0.5.5.1
+                      , tach-typeclasses >= 0.0.0
 
 
 Test-Suite spec

@@ -21,6 +21,7 @@ Library
   Other-Modules:        Tach.Class.Internal
   Build-Depends:        base >= 4 && < 5
                       , bifunctors >= 4.1.1.1
+                      , containers >= 0.5.5.1
 
 Test-Suite spec
   Type:                 exitcode-stdio-1.0

@@ -11,15 +11,20 @@ import           Data.Wavelets.Reconstruction
 import           Data.Wavelets.Scaling
 import           GHC.Generics
 import           Tach.Periodic
+import Tach.Class.Bounds
 
 data WaveletTransformed a = WaveletTransformed {
-    waveletScaling        :: OldSeriesFactors
-  , waveletRepresentation :: [[a]]
-  , waveletStart          :: Int
+    waveletStart          :: Int
   , waveletEnd            :: Int
+  , waveletRepresentation :: [[a]]
+  , waveletScaling        :: OldSeriesFactors
   , waveletDelta          :: Int
   , waveletLevels         :: Int
-  } deriving (Show)
+  } deriving (Show, Eq, Ord)
+
+instance (Ord a) => Bound (WaveletTransformed a) where
+  bounds = waveletBounds
+
 
 reconstructWavelet :: WaveletTransformed Double -> [(Int, Double)]
 reconstructWavelet transformed = zip times untransformed
@@ -50,10 +55,14 @@ transformClassified delta periodic =
 
 
 waveletFromList :: [Double] -> Int -> Int -> Int -> WaveletTransformed Double
-waveletFromList rep start end delta = WaveletTransformed scale newRep start end delta levels
+waveletFromList rep start end delta = WaveletTransformed start end newRep scale delta levels
   where newRep = defaultVdwt levels rep
         levels = ceiling ( logBase 2 (fromIntegral . length $ rep))
         scale = OSF . computeSeriesFactors $ rep
+
+waveletBounds :: WaveletTransformed a -> (Int, Int)
+waveletBounds wvlt = (waveletStart wvlt, waveletEnd wvlt)
+
 
 calcLevels :: WaveletTransformed Double -> Int -> Int -> Int -> Int
 calcLevels transformed start end step

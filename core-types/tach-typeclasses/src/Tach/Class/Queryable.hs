@@ -1,16 +1,18 @@
+{-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE InstanceSigs          #-}
-{-# LANGUAGE MultiParamTypeClasses, FlexibleContexts #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Tach.Class.Queryable where
 
 import           Data.Either         ()
 import           Data.Foldable
-import           Tach.Types.Classify
+import           Data.Sequence
 import           Tach.Class.Bounds
+import           Tach.Types.Classify
 
 
 class (Bound a, Ord a, Ord b) => Queryable a b where
-  query :: (Num step, Num start, Num end, Foldable f, Functor f) => step -> start -> end -> a -> f b
+  query :: Int -> Int -> Int -> a -> Seq b
   query = undefined
 
 

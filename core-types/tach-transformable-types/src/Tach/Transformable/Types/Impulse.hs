@@ -1,27 +1,38 @@
-{-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings,ExistentialQuantification     #-}
 
 module Tach.Transformable.Types.Impulse where
 
 import           Control.Applicative
-import qualified Data.Foldable       as F
+import qualified Data.Foldable        as F
 import           Data.Function
 import           Data.Maybe
-import qualified Data.Sequence       as S
+import qualified Data.Sequence        as S
 import           GHC.Generics
+import           Tach.Class.Bounds
+import           Tach.Class.Queryable
+
 
 data ImpulseTransformed = ImpulseTransformed {
     impulseRepresentation :: S.Seq (Int, Double)
   , impulseStart          :: Int
   , impulseEnd            :: Int
-} deriving (Show)
+} deriving (Show, Ord, Eq)
 
+
+instance Bound ImpulseTransformed where
+  bounds = impulseBounds
+
+instance Queryable ImpulseTransformed (Int, Double) where
+  query step start end impls = queryImpulse impls step start end
 
 reconstructImpulse :: ImpulseTransformed -> [(Int, Double)]
 reconstructImpulse = F.toList . impulseRepresentation
 
-queryImpulse :: ImpulseTransformed -> Int -> Int -> Int -> [(Int, Double)]
-queryImpulse tf step start end = F.toList . trim . impulseRepresentation $ tf
+queryImpulse :: ImpulseTransformed -> Int -> Int -> Int -> S.Seq (Int, Double)
+queryImpulse tf step start end = trim . impulseRepresentation $ tf
   where trim = (S.dropWhileL (\x -> (fst x) >= start)) . (S.dropWhileR (\x -> (fst x) <= end))
 
 transformImpulse :: [(Int, Double)] -> ImpulseTransformed
@@ -29,6 +40,11 @@ transformImpulse tvnklist = ImpulseTransformed rep start end
   where rep = (S.unstableSortBy (compare `on` fst)) . S.fromList $ tvnklist -- Ensonure that the list is sorted on time
         start = fst . headSeq $ rep
         end = fst . lastSeq $ rep
+
+
+impulseBounds :: ImpulseTransformed -> (Int, Int)
+impulseBounds impls = (impulseStart impls, impulseEnd impls)
+
 
 headSeq :: S.Seq a -> a
 headSeq = fromJust . headMaySeq
