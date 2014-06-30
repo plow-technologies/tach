@@ -2,8 +2,10 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Tach.Types.Classify where
 
+import           Control.Applicative
 import           Data.Bifunctor
-import Control.Applicative
+import Data.Bifoldable
+
 
 data Classify a b = Classified a | Unclassified b deriving (Show, Eq, Ord)
 
@@ -24,3 +26,11 @@ instance Monad (Classify a) where
   return = Unclassified
   Classified c >>= _ = Classified c
   Unclassified un >>= f = f un
+
+instance Bifoldable Classify where
+  bifoldMap f _ (Classified a) = f a
+  bifoldMap _ g (Unclassified b) = g b
+
+combineClassify :: Classify a a -> a
+combineClassify (Classified x) = x
+combineClassify (Unclassified x) = x
