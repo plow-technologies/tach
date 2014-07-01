@@ -6,17 +6,20 @@
 module Tach.Transformable.Types.Wavelet where
 
 import           Control.Applicative
-import qualified Data.Foldable                as F
-import qualified Data.Sequence                as S
+import           Data.Bifunctor
+import qualified Data.Foldable                     as F
+import qualified Data.Sequence                     as S
 import           Data.Wavelets.Construction
 import           Data.Wavelets.Reconstruction
 import           Data.Wavelets.Scaling
 import           GHC.Generics
 import           Tach.Class.Bounds
-import qualified Tach.Class.Insertable        as I
+import qualified Tach.Class.Insertable             as I
 import           Tach.Class.Queryable
 import           Tach.Impulse.Types.TimeValue
 import           Tach.Periodic
+import           Tach.Transformable.Types.Internal
+import           Tach.Types.Classify
 
 data WaveletTransformed a = WaveletTransformed {
     waveletStart          :: Int
@@ -48,12 +51,12 @@ queryWavelet transformed step start end = zipWith TVNoKey times $ scale untransf
         scale = applyScalingMatrix (computeScalingMatrix nsf $ waveletScaling transformed)
         times = [(waveletStart transformed),(waveletStart transformed)+(waveletDelta transformed)..]
 
-
-
-transformWavelet :: [TVNoKey] -> [(Either (S.Seq TVNoKey) (WaveletTransformed Double))]
+transformWavelet :: [TVNoKey] -> [Classify (WaveletTransformed Double) [TVNoKey]]
 transformWavelet tvnklist =
   let classified = tvDataToEither <$> classifyData 15 1 200 tvNkSimpleTime tvnklist
-  in (fmap (transformClassified 15)) <$> classified
+      transformed = fmap (transformClassified 15) <$> classified
+  in map ((second F.toList) . eitherToClassify) transformed
+
 
 transformClassified :: Int -> PeriodicData TVNoKey -> WaveletTransformed Double
 transformClassified delta periodic =

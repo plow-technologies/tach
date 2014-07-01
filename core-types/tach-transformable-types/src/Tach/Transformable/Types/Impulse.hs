@@ -1,18 +1,20 @@
-{-# LANGUAGE DeriveGeneric         #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings,ExistentialQuantification     #-}
+{-# LANGUAGE DeriveGeneric             #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleInstances         #-}
+{-# LANGUAGE MultiParamTypeClasses     #-}
+{-# LANGUAGE OverloadedStrings         #-}
 
 module Tach.Transformable.Types.Impulse where
 
-import qualified Data.Foldable        as F
+import qualified Data.Foldable                as F
 import           Data.Function
 import           Data.Maybe
-import qualified Data.Sequence        as S
+import qualified Data.Sequence                as S
 import           Tach.Class.Bounds
+import qualified Tach.Class.Insertable        as I
 import           Tach.Class.Queryable
-import qualified Tach.Class.Insertable as I
-import Tach.Impulse.Types.TimeValue
+import           Tach.Impulse.Types.TimeValue
+import           Tach.Types.Classify
 
 
 data ImpulseTransformed = ImpulseTransformed {
@@ -36,9 +38,9 @@ queryImpulse :: ImpulseTransformed -> Int -> Int -> Int -> S.Seq TVNoKey
 queryImpulse tf step start end = trim . impulseRepresentation $ tf
   where trim = (S.dropWhileL (\x -> (tvNkSimpleTime x) >= start)) . (S.dropWhileR (\x -> (tvNkSimpleTime x) <= end))
 
-transformImpulse :: [TVNoKey] -> ImpulseTransformed
-transformImpulse tvnklist = ImpulseTransformed rep start end
-  where rep = (S.unstableSortBy (compare `on` tvNkSimpleTime)) . S.fromList $ tvnklist -- Ensonure that the list is sorted on time
+transformImpulse :: [TVNoKey] -> [Classify ImpulseTransformed ()]
+transformImpulse tvnklist = [Classified $ ImpulseTransformed rep start end]
+  where rep = (S.unstableSortBy (compare `on` tvNkSimpleTime)) . S.fromList $ tvnklist -- Ensure that the list is sorted on time
         start = tvNkSimpleTime . headSeq $ rep
         end = tvNkSimpleTime . lastSeq $ rep
 

@@ -16,11 +16,17 @@ Library
   Exposed-Modules:      Tach.DB.Types
   Other-Modules:        Tach.DB.Types.Internal
   Build-Depends:        base >= 4 && < 5
-                       ,directed-keys
-                       ,cereal
-                       ,bytestring
-                       ,aeson
-                       ,text
+                      , directed-keys
+                      , cereal
+                      , bytestring
+                      , aeson
+                      , text
+                      , tach-typeclasses >= 0.0.0
+                      , tach-transformable-types >= 0.1.5.1
+                      , tach-impulse-series-types >= 0.1.11
+                      , containers >= 0.5.5.1
+                      , bifunctors >= 4.1.1.1
+
 
 Test-Suite spec
   Type:                 exitcode-stdio-1.0
