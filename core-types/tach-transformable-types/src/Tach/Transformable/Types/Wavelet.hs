@@ -1,5 +1,7 @@
-{-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
 
 module Tach.Transformable.Types.Wavelet where
 
@@ -10,8 +12,11 @@ import           Data.Wavelets.Construction
 import           Data.Wavelets.Reconstruction
 import           Data.Wavelets.Scaling
 import           GHC.Generics
+import           Tach.Class.Bounds
+import qualified Tach.Class.Insertable        as I
+import           Tach.Class.Queryable
+import           Tach.Impulse.Types.TimeValue
 import           Tach.Periodic
-import Tach.Class.Bounds
 
 data WaveletTransformed a = WaveletTransformed {
     waveletStart          :: Int
@@ -25,32 +30,37 @@ data WaveletTransformed a = WaveletTransformed {
 instance (Ord a) => Bound (WaveletTransformed a) where
   bounds = waveletBounds
 
+instance Queryable (WaveletTransformed Double) TVNoKey where
+  query step start end wvlt = I.toInsertable $ queryWavelet wvlt step start end
 
-reconstructWavelet :: WaveletTransformed Double -> [(Int, Double)]
-reconstructWavelet transformed = zip times untransformed
+
+reconstructWavelet :: WaveletTransformed Double -> [TVNoKey]
+reconstructWavelet transformed = zipWith TVNoKey times untransformed
   where untransformed = reconstructHaarTimeSeries levels $ waveletRepresentation transformed
         levels = waveletLevels transformed
         times = [(waveletStart transformed),(waveletStart transformed)+(waveletDelta transformed)..]
 
-queryWavelet :: WaveletTransformed Double -> Int -> Int -> Int -> [Double]
-queryWavelet transformed step start end = scale untransformed
+queryWavelet :: WaveletTransformed Double -> Int -> Int -> Int -> [TVNoKey]
+queryWavelet transformed step start end = zipWith TVNoKey times $ scale untransformed
   where untransformed = reconstructHaarTimeSeries level $ waveletRepresentation transformed
         level = calcLevels transformed start end step
         nsf = NSF . computeSeriesFactors $ untransformed
         scale = applyScalingMatrix (computeScalingMatrix nsf $ waveletScaling transformed)
+        times = [(waveletStart transformed),(waveletStart transformed)+(waveletDelta transformed)..]
 
 
-transformWavelet :: [(Int, Double)] -> [(Either (S.Seq (Int, Double)) (WaveletTransformed Double))]
+
+transformWavelet :: [TVNoKey] -> [(Either (S.Seq TVNoKey) (WaveletTransformed Double))]
 transformWavelet tvnklist =
-  let classified = tvDataToEither <$> classifyData 15 1 200 fst tvnklist
+  let classified = tvDataToEither <$> classifyData 15 1 200 tvNkSimpleTime tvnklist
   in (fmap (transformClassified 15)) <$> classified
 
-transformClassified :: Int -> PeriodicData (Int, Double) -> WaveletTransformed Double
+transformClassified :: Int -> PeriodicData TVNoKey -> WaveletTransformed Double
 transformClassified delta periodic =
   let periodicList = F.toList . unPeriodicData $ periodic
-      start = fst . head $ periodicList
-      end = fst . last $ periodicList
-  in waveletFromList (snd <$> periodicList) start end delta
+      start = tvNkSimpleTime . head $ periodicList
+      end = tvNkSimpleTime . last $ periodicList
+  in waveletFromList (tvNkSimpleValue <$> periodicList) start end delta
 
 
 
