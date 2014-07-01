@@ -19,6 +19,8 @@ Library
                       , Tach.Types.Classify
                       , Tach.Class.Bounds
                       , Tach.Class.Insertable
+                      , Tach.Class.Bounds.Foldable
+                      , Tach.Class.Bounds.Bifoldable
   Other-Modules:        Tach.Class.Internal
   Build-Depends:        base >= 4 && < 5
                       , bifunctors >= 4.1.1.1

@@ -13,6 +13,9 @@ import qualified Data.Sequence        as S
 import           GHC.Generics
 import           Tach.Class.Bounds
 import           Tach.Class.Queryable
+import           Data.Monoid
+import qualified Data.Traversable     as T
+import qualified Tach.Class.Insertable as I
 
 
 data ImpulseTransformed = ImpulseTransformed {
@@ -26,7 +29,11 @@ instance Bound ImpulseTransformed where
   bounds = impulseBounds
 
 instance Queryable ImpulseTransformed (Int, Double) where
-  query step start end impls = queryImpulse impls step start end
+  query step start end impls = toFoldable $ queryImpulse impls step start end
+
+
+toFoldable :: (I.Insertable f, F.Foldable t, Ord a) => t a -> f a
+toFoldable aSeq = F.foldl (\b a -> I.insert b a) I.empty aSeq
 
 reconstructImpulse :: ImpulseTransformed -> [(Int, Double)]
 reconstructImpulse = F.toList . impulseRepresentation
