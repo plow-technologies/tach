@@ -7,11 +7,38 @@ import Data.Bifunctor
 import Control.Applicative
 import Data.Traversable
 import Tach.Types.Classify
+import Tach.Types.Classify.Lens
+import qualified Data.Foldable as F
+import           Tach.Impulse.Types.TimeValue
 
-transformAll raw = stopper (transformImpulse) (transformWavelet) raw
+
+
+transformAll raw = transformToWavelet2 . F.toList $ transformToWavelet [(Classified (transformImpulse raw))]
+    where transformToWavelet = transformWavelet _implsLens _wvltLens toWavelet
+          transformToWavelet2 = transformWavelet _implsLens _wvltLens2 toWavelet
+
+
+toWavelet :: (Functor f) => f (Classify (WaveletTransformed Double) [TVNoKey]) -> f (Classify ImpulseTransformed (Classify (WaveletTransformed Double) c))
+toWavelet = fmap towvfunc
+  where towvfunc (Classified a) = Unclassified (Classified a)
+        towvfunc (Unclassified g) = Classified $ transformImpulse g
+--[Cl APeriodic (Cl WVLT (CL Const ())))] -> [Cl APeriodic (Cl WVLT (CL Const ())))]
+
+----c1 = Cl a (Cl b [Cl c [Cl d e]])
+----transformingThingtransformintransformingThinggThing
+----t1 = over _unclassified transformThing c1 -> c2 = Cl a [Cl b (Cl c [Cl d e])] 
+----t2 = transformThing c2 -> c3 = [Cl a (Cl b (Cl c [Cl d e]))]
+----t3 = over traverse._unclassified transformThing -> 
+
+----t1' = let 
+----         es = catPrisms _unclassified._unclassified.traverse._unclassified c1
+----         ds = catPrisms _unclassified._unclassified.traverse._classified c1
+----         cs = catPrisms _unclassified._classified c1
+----         bs = catPrisms _classified c1
+--         --as = catPrisms _classified c1
 
 transformingThing :: (Classify a [Classify b c]) -> [Classify a (Classify b c)]
-transformingThing (Unclassified cl) = map otherTransformingThing cl
+transformingThing (Unclassified cl) = map Unclassified cl
 transformingThing (Classified un) = [Classified un]
 
 otherTransformingThing :: Classify a b -> (Classify c (Classify a b))
@@ -29,15 +56,14 @@ stopper f g list =
     in concat $ map ((map flipClassify) . transformingThing) secondList
 
 glue :: (a -> [Classify b c]) -> (d -> [Classify e a]) -> [Classify f d] -> [Classify b (Classify e (Classify f c))]
---glue :: (b1 -> [Classify b2 c]) -> (b -> [Classify a b1]) -> [Classify b3 b] -> [Classify a (Classify b3 (Classify b2 c))]
 glue f g list = 
     let firstList = concat $ (map ((map flipClassify) . transformingThing)) $ (second  g) <$> list
-        tList = ((second . second) f) <$> firstList
-        fList = map (second transformingThing) tList
-        glist = concat $ map (transformingThing) fList
-        hlist = map ((second ) flipClassify) glist
-        ilist = map flipClassify hlist
-        --secondList = concat $ (map ((map flipClassify) . transformingThing)) $ (\x -> (second . second) f x) <$> firstList
-        --secondList = (map (map flipClassify)) $ (second . second $ f) <$> firstList
-    in ilist
+        fList = map ((second transformingThing) . ((second . second) f)) firstList
+    in concat $ map (( map (flipClassify . (second flipClassify)) . transformingThing)) fList
 --reverseTransforms :: Classify (Classify a b) c -> 
+
+--betterGlue :: (Unclassifiable a) => (a -> Classify b a) -> (a -> Classify c a) -> [a] -> [(Classify c (Classify b a))]
+--betterGlue f g raw = 
+--    let mUnclassified = unclassify 
+
+--attemptDeclassification :: (a -> [Classify b c]) -> 

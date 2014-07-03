@@ -21,6 +21,7 @@ Library
                        ,bytestring
                        ,aeson >= 0.7.0.0
                        ,text
+                       ,tach-impulse-series-types >= 0.1.11
 
 Test-Suite spec
   Type:                 exitcode-stdio-1.0

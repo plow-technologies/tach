@@ -17,6 +17,7 @@ Library
                       , Tach.Class.Queryable
                       , Tach.Class.Periodic
                       , Tach.Types.Classify
+                      , Tach.Types.Classify.Lens
                       , Tach.Class.Bounds
                       , Tach.Class.Insertable
                       , Tach.Class.Bounds.Foldable
@@ -25,6 +26,8 @@ Library
   Build-Depends:        base >= 4 && < 5
                       , bifunctors >= 4.1.1.1
                       , containers >= 0.5.5.1
+                      , lens >= 4.2
+                      , profunctors >= 4.0.4
 
 Test-Suite spec
   Type:                 exitcode-stdio-1.0

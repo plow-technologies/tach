@@ -11,7 +11,7 @@ import qualified Data.Serialize as S
 import GHC.Generics
 import Data.Aeson
 import Data.Text
-
+import Tach.Impulse.Types.TimeValue
 
 type IncomingKey = DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime
 

@@ -1,10 +1,13 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TemplateHaskell       #-}
 module Tach.Types.Classify where
 
 import           Control.Applicative
+import           Control.Lens
 import           Data.Bifoldable
 import           Data.Bifunctor
+import           Data.Foldable
 
 
 data Classify a b = Classified a | Unclassified b deriving (Show, Eq, Ord)
@@ -25,8 +28,12 @@ instance Applicative (Classify a) where
 instance Monad (Classify a) where
   return = Unclassified
   Classified c >>= _ = Classified c
-  Unclassified un >>= f = f un
+  Unclassified uncl >>= f = f uncl
 
 instance Bifoldable Classify where
   bifoldMap f _ (Classified a) = f a
   bifoldMap _ g (Unclassified b) = g b
+
+
+
+$(makePrisms ''Classify)
