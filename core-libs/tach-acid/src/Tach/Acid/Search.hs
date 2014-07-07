@@ -37,8 +37,8 @@ import           Tach.Transformable.Types.Wavelet
 import           Tach.Types.Classify
 import           Tach.Types.Classify.Lens
 
-queryTransfomredStore :: Int -> Int -> Int -> Query TransformedStore (SEQ.Seq TVNoKey)
-queryTransfomredStore step start end = do
+queryManyTransfomredStore :: Int -> Int -> Int -> Query TransformedStore (SEQ.Seq TVNoKey)
+queryManyTransfomredStore step start end = do
   classified <- ask
   return $ queryTf classified step start end
   where
@@ -46,3 +46,6 @@ queryTransfomredStore step start end = do
       queryTf stored sp st en =
         let raw = transformedData stored
         in query sp st en raw
+
+queryOneTransformedStore :: Int -> Query TransformedStore TVNoKey
+queryOneTransformedStore
