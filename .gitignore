@@ -15,3 +15,9 @@ cabal-dev
 *teststate*
 *teststates*
 config.yml
+*.aes
+deploy-tach-migration.sh
+deployTachQuery.sh
+*.tar.gz
+tach-query.gz
+*states/
