@@ -1,5 +1,5 @@
 Name:                   tach-transformable-types
-Version:                0.1.5.1
+Version:                0.1.6
 Author:                 Scott Murphy <scottmurphy09@gmail.com>
 Maintainer:             Scott Murphy <scottmurphy09@gmail.com>
 License:                BSD3
@@ -21,10 +21,10 @@ Library
 
   Build-Depends:        base >= 4 && < 5
                       , tach-impulse-series-types >= 0.1.11
-                      , tach-periodic >= 0.1.6
+                      , tach-periodic >= 0.1.7
                       , wavelets >= 0.1.8
                       , containers >= 0.5.5.1
-                      , tach-typeclasses >= 0.0.0
+                      , tach-typeclasses >= 0.1.0
                       , bifunctors >= 4.1.1.1
                       , lens >= 4.2
                       , plow-extras-lens >= 0.1.0

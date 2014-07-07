@@ -23,7 +23,7 @@ Library
                         Tach.Acid.Impulse.Cruds.Types
   Build-Depends:        base >= 4 && < 5
                       , tach-migration-acidic     == 0.2.3
-                      , tach-impulse-series-types == 0.1.11
+                      , tach-impulse-series-types >= 0.1.11
                       , safecopy                  == 0.8.3
                       , containers                == 0.5.5.1
                       , vector                    == 0.10.9.1

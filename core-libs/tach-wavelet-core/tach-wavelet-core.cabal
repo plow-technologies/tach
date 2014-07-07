@@ -16,7 +16,7 @@ Library
   Exposed-Modules:      Tach.Wavelet.Core
   Other-Modules:        Tach.Wavelet.Core.Internal
   Build-Depends:        base >= 4 && < 5
-                      , tach-impulse-series-types == 0.1.0
+                      , tach-impulse-series-types >= 0.1.11
                       , template-haskell
                       , wavelets == 0.1.3
 

@@ -44,12 +44,9 @@ insertManyClassified cl = do
     put $ TransformedStore classified'
     return classified'
 
-queryTransfomredStore :: Int -> Int -> Int -> Query TransformedStore (SEQ.Seq TVNoKey)
-queryTransfomredStore step start end = do
-  classified <- ask
-  return $ queryTf classified step start end
-  where
-      queryTf :: TransformedStore -> Int -> Int -> Int -> SEQ.Seq TVNoKey
-      queryTf stored sp st en =
-        let raw = transformedData stored
-        in query sp st en raw
+insertClassified :: ClassifiedData -> Update TransformedStore ClassifiedData
+insertClassified c = do
+  classified <- get
+  let classified' = (transformedData classified) ++ [c]
+  put $ TransformedStore classified'
+  return c
