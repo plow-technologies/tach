@@ -1,24 +1,13 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE UndecidableInstances #-}
-module Tach.Class.Bounds where
+module Tach.Class.Bounds.Foldable where
 
-import           Control.Applicative
 import           Data.Either         ()
-import           Data.Function
-import           Data.List
-import qualified Data.Sequence       as S
 import qualified Data.Foldable as F
-import Data.Monoid
-import Data.Bifunctor
-import Data.Bifoldable
+import           Tach.Class.Bounds
 
-class Bound a where
-  bounds :: a -> (Int, Int)
 
-instance Bound () where
-    bounds _ = (0,0)
-
-instance (Bound a) => Bound [a] where
+instance (Bound a, F.Foldable f)  => Bound (f a) where
   bounds xs =  F.foldl (\old x -> (updateBounds old) $ (bounds x)) (-1,-1) xs
     where updateBounds :: (Int,Int) -> (Int, Int) -> (Int, Int)
           updateBounds bs = (updateOlder bs) . (updateYounger bs)

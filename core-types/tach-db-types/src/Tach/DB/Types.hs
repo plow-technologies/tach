@@ -12,30 +12,17 @@ import qualified Data.Foldable as F
 import           Tach.Impulse.Types.TimeValue
 
 
+type Transformed = Classify  ImpulseTransformed (Classify (WaveletTransformed Double) ())
 
-transformAll raw = transformToWavelet2 . F.toList $ transformToWavelet [(Classified (transformImpulse raw))]
+transformAll :: [TVNoKey] -> [Classify  ImpulseTransformed (Classify (WaveletTransformed Double) c)]
+transformAll raw = F.toList $ transformToWavelet [(Classified (transformImpulse raw))]
     where transformToWavelet = transformWavelet _implsLens _wvltLens toWavelet
-          transformToWavelet2 = transformWavelet _implsLens _wvltLens2 toWavelet
 
 
 toWavelet :: (Functor f) => f (Classify (WaveletTransformed Double) [TVNoKey]) -> f (Classify ImpulseTransformed (Classify (WaveletTransformed Double) c))
 toWavelet = fmap towvfunc
   where towvfunc (Classified a) = Unclassified (Classified a)
         towvfunc (Unclassified g) = Classified $ transformImpulse g
---[Cl APeriodic (Cl WVLT (CL Const ())))] -> [Cl APeriodic (Cl WVLT (CL Const ())))]
-
-----c1 = Cl a (Cl b [Cl c [Cl d e]])
-----transformingThingtransformintransformingThinggThing
-----t1 = over _unclassified transformThing c1 -> c2 = Cl a [Cl b (Cl c [Cl d e])] 
-----t2 = transformThing c2 -> c3 = [Cl a (Cl b (Cl c [Cl d e]))]
-----t3 = over traverse._unclassified transformThing -> 
-
-----t1' = let 
-----         es = catPrisms _unclassified._unclassified.traverse._unclassified c1
-----         ds = catPrisms _unclassified._unclassified.traverse._classified c1
-----         cs = catPrisms _unclassified._classified c1
-----         bs = catPrisms _classified c1
---         --as = catPrisms _classified c1
 
 transformingThing :: (Classify a [Classify b c]) -> [Classify a (Classify b c)]
 transformingThing (Unclassified cl) = map Unclassified cl

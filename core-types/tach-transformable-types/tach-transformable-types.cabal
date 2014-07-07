@@ -22,7 +22,7 @@ Library
   Build-Depends:        base >= 4 && < 5
                       , tach-impulse-series-types >= 0.1.11
                       , tach-periodic >= 0.1.6
-                      , wavelets >= 0.1.7
+                      , wavelets >= 0.1.8
                       , containers >= 0.5.5.1
                       , tach-typeclasses >= 0.0.0
                       , bifunctors >= 4.1.1.1

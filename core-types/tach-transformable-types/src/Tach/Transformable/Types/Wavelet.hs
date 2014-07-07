@@ -3,6 +3,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE RankNTypes            #-}
+{-# LANGUAGE DeriveDataTypeable    #-}
 
 module Tach.Transformable.Types.Wavelet where
 
@@ -12,6 +13,7 @@ import           Data.Bifunctor
 import qualified Data.Foldable                     as F
 import qualified Data.Sequence                     as S
 import           Data.Traversable
+import           Data.Typeable
 import           Data.Wavelets.Construction
 import           Data.Wavelets.Reconstruction
 import           Data.Wavelets.Scaling
@@ -33,7 +35,7 @@ data WaveletTransformed a = WaveletTransformed {
   , waveletScaling        :: OldSeriesFactors
   , waveletDelta          :: Int
   , waveletLevels         :: Int
-  } deriving (Show, Eq, Ord)
+  } deriving (Show, Eq, Ord, Typeable)
 
 instance (Ord a) => Bound (WaveletTransformed a) where
   bounds = waveletBounds
@@ -67,8 +69,8 @@ tfWavelet tvnklist =
   in (second F.toList . eitherToClassify) <$> transformed
 
 -- Top level function for transform a list of Classified Impulsive data
--- into a list of classified Impulsive and wavelet data 
-transformWavelet :: Getting (S.Seq ImpulseTransformed) a1 ImpulseTransformed 
+-- into a list of classified Impulsive and wavelet data
+transformWavelet :: Getting (S.Seq ImpulseTransformed) a1 ImpulseTransformed
                   -> Getting (S.Seq a) a1 a
                   -> (S.Seq (Classify (WaveletTransformed Double) [TVNoKey]) -> S.Seq (Classify a2 a))
                    -> [a1]
@@ -104,7 +106,7 @@ calcLevels :: WaveletTransformed Double -> Int -> Int -> Int -> Int
 calcLevels transformed start end step
   | start > waveletStart transformed || end < waveletEnd transformed  = waveletLevels transformed
   | end - start > waveletEnd transformed - waveletStart transformed = 1
-  | otherwise = if (goal > maxLevel) then maxLevel else goal 
+  | otherwise = if (goal > maxLevel) then maxLevel else goal
     where goal = ceiling (fromIntegral (waveletEnd transformed - waveletStart transformed) / td)
           maxLevel = waveletLevels transformed
           td :: Double

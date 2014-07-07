@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable        #-}
 {-# LANGUAGE DeriveGeneric             #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleInstances         #-}
@@ -10,6 +11,7 @@ import qualified Data.Foldable                as F
 import           Data.Function
 import           Data.Maybe
 import qualified Data.Sequence                as S
+import           Data.Typeable
 import           Tach.Class.Bounds
 import qualified Tach.Class.Insertable        as I
 import           Tach.Class.Queryable
@@ -21,7 +23,7 @@ data ImpulseTransformed = ImpulseTransformed {
     impulseRepresentation :: S.Seq TVNoKey
   , impulseStart          :: Int
   , impulseEnd            :: Int
-} deriving (Show, Ord, Eq)
+} deriving (Show, Ord, Eq, Typeable)
 
 
 instance Bound ImpulseTransformed where
