@@ -3,7 +3,7 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleInstances         #-}
 {-# LANGUAGE MultiParamTypeClasses     #-}
-{-# LANGUAGE OverloadedStrings         #-}
+{-# LANGUAGE OverloadedStrings         #-}{-# LANGUAGE TypeFamilies #-}
 
 module Tach.Transformable.Types.Impulse where
 
@@ -12,11 +12,17 @@ import           Data.Function
 import           Data.Maybe
 import qualified Data.Sequence                as S
 import           Data.Typeable
+import           Numeric.Classes.Indexing
+import           Numeric.Tools.Mesh
 import           Tach.Class.Bounds
 import qualified Tach.Class.Insertable        as I
 import           Tach.Class.Queryable
 import           Tach.Impulse.Types.TimeValue
 import           Tach.Types.Classify
+import qualified Data.Vector as V
+import Statistics.Function
+import Control.Applicative
+import Numeric.Tools.Interpolation
 
 
 data ImpulseTransformed = ImpulseTransformed {
@@ -26,28 +32,60 @@ data ImpulseTransformed = ImpulseTransformed {
 } deriving (Show, Ord, Eq, Typeable)
 
 
-instance Bound ImpulseTransformed where
+instance Bound (ImpulseTransformed) where
   bounds = impulseBounds
 
-instance Queryable ImpulseTransformed TVNoKey where
+instance Queryable (ImpulseTransformed) TVNoKey where
   query step start end impls = I.toInsertable $ queryImpulse impls step start end
 
+data ImpulseMesh a  = ImpulseMesh {
+  impulseMeshRep :: V.Vector a
+, impulseMeshLower :: Double
+, impulseMeshUpper :: Double
+} deriving (Show, Ord, Eq, Typeable)
 
-reconstructImpulse :: ImpulseTransformed -> [TVNoKey]
+
+instance Indexable (ImpulseMesh a) where
+  type IndexVal (ImpulseMesh a) = a
+  size = size . impulseMeshRep
+  unsafeIndex = unsafeIndex . impulseMeshRep
+
+instance Mesh (ImpulseMesh Double) where
+  meshLowerBound = impulseMeshLower
+  meshUpperBound = impulseMeshUpper
+  meshFindIndex aSeq item = case V.findIndex (\x -> x == item) (impulseMeshRep aSeq) of
+                              (Just lIndex) -> lIndex
+                              Nothing -> error "Error, unfoud value"
+
+tvnkFromList :: [(Int, Double)] -> [TVNoKey]
+tvnkFromList l = (\(t ,v) -> TVNoKey t v) <$> l
+
+tabulateAndCreate :: [TVNoKey] -> CubicSpline (ImpulseMesh Double)
+tabulateAndCreate tvnklist = cubicSpline $ tabulate mesh dVec
+  where dVec = V.fromList . F.toList . fmap (fromIntegral . tvNkSimpleTime) $ impulseRepresentation tf
+        mesh = createMesh tf
+        tf = transformImpulse tvnklist
+
+createMesh :: ImpulseTransformed -> ImpulseMesh Double
+createMesh tf = ImpulseMesh rep (mn) (mx)
+  where rep = V.fromList . F.toList $ ( fromIntegral . tvNkSimpleTime <$> (impulseRepresentation tf) )
+        (mn,mx) = minMax rep
+
+reconstructImpulse :: (ImpulseTransformed) -> [TVNoKey]
 reconstructImpulse = F.toList . impulseRepresentation
 
-queryImpulse :: ImpulseTransformed -> Int -> Int -> Int -> S.Seq TVNoKey
+queryImpulse :: (ImpulseTransformed) -> Int -> Int -> Int -> S.Seq TVNoKey
 queryImpulse tf step start end = trim . impulseRepresentation $ tf
   where trim = (S.dropWhileL (\x -> (tvNkSimpleTime x) >= start)) . (S.dropWhileR (\x -> (tvNkSimpleTime x) <= end))
 
-transformImpulse :: [TVNoKey] -> ImpulseTransformed
+transformImpulse :: [TVNoKey] -> (ImpulseTransformed)
 transformImpulse tvnklist = ImpulseTransformed rep start end
   where rep = (S.unstableSortBy (compare `on` tvNkSimpleTime)) . S.fromList $ tvnklist -- Ensure that the list is sorted on time
         start = tvNkSimpleTime . headSeq $ rep
         end = tvNkSimpleTime . lastSeq $ rep
 
 
-impulseBounds :: ImpulseTransformed -> (Int, Int)
+impulseBounds :: (ImpulseTransformed) -> (Int, Int)
 impulseBounds impls = (impulseStart impls, impulseEnd impls)
 
 

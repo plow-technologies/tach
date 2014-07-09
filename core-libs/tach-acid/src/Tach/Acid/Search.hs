@@ -48,4 +48,4 @@ queryManyTransfomredStore step start end = do
         in query sp st en raw
 
 queryOneTransformedStore :: Int -> Query TransformedStore TVNoKey
-queryOneTransformedStore
+queryOneTransformedStore = undefined

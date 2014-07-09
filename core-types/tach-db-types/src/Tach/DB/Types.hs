@@ -1,21 +1,25 @@
 module Tach.DB.Types where
 
-import Tach.DB.Types.Internal
-import Tach.Transformable.Types.Wavelet
-import Tach.Transformable.Types.Impulse
-import Data.Bifunctor
-import Control.Applicative
-import Data.Traversable
-import Tach.Types.Classify
-import Tach.Types.Classify.Lens
-import qualified Data.Foldable as F
+import           Control.Applicative
+import           Data.Bifunctor
+import qualified Data.Foldable                    as F
+import qualified Data.Sequence                    as SEQ
+import           Data.Traversable
+import           Tach.DB.Types.Internal
 import           Tach.Impulse.Types.TimeValue
+import           Tach.Transformable.Types.Impulse
+import           Tach.Transformable.Types.Wavelet
+import           Tach.Types.Classify
+import           Tach.Types.Classify.Lens
 
 
 type Transformed = Classify  ImpulseTransformed (Classify (WaveletTransformed Double) ())
 
-transformAll :: [TVNoKey] -> [Classify  ImpulseTransformed (Classify (WaveletTransformed Double) c)]
-transformAll raw = F.toList $ transformToWavelet [(Classified (transformImpulse raw))]
+-- Do not just remove the type signature. It's there to keep track of migrations and to make sure the data is in the right format.
+-- If you want to add something you HAVE TO MAKE SURE THE FIRST ITEMS ARE (Classify ImpulseTransformed (Classify (WaveletTransformedDouble) ....)) IN ORDER FOR THE
+-- JSON SERIALIZATION TO WORK PROPERLY
+transformAll :: [TVNoKey] -> SEQ.Seq (Classify  ImpulseTransformed (Classify (WaveletTransformed Double) c))
+transformAll raw = transformToWavelet [(Classified (transformImpulse raw))]
     where transformToWavelet = transformWavelet _implsLens _wvltLens toWavelet
 
 
@@ -37,20 +41,20 @@ flipClassify (Unclassified (Classified a)) = Classified a
 flipClassify (Unclassified (Unclassified b)) = Unclassified (Unclassified b)
 
 stopper :: (a -> [Classify b c]) -> (t -> [Classify a1 a]) -> t -> [Classify b (Classify a1 c)]
-stopper f g list = 
+stopper f g list =
     let firstList = g list
         secondList = map (fmap f) firstList
     in concat $ map ((map flipClassify) . transformingThing) secondList
 
 glue :: (a -> [Classify b c]) -> (d -> [Classify e a]) -> [Classify f d] -> [Classify b (Classify e (Classify f c))]
-glue f g list = 
+glue f g list =
     let firstList = concat $ (map ((map flipClassify) . transformingThing)) $ (second  g) <$> list
         fList = map ((second transformingThing) . ((second . second) f)) firstList
     in concat $ map (( map (flipClassify . (second flipClassify)) . transformingThing)) fList
---reverseTransforms :: Classify (Classify a b) c -> 
+--reverseTransforms :: Classify (Classify a b) c ->
 
 --betterGlue :: (Unclassifiable a) => (a -> Classify b a) -> (a -> Classify c a) -> [a] -> [(Classify c (Classify b a))]
---betterGlue f g raw = 
---    let mUnclassified = unclassify 
+--betterGlue f g raw =
+--    let mUnclassified = unclassify
 
---attemptDeclassification :: (a -> [Classify b c]) -> 
+--attemptDeclassification :: (a -> [Classify b c]) ->

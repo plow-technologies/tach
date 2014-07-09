@@ -28,6 +28,9 @@ Library
                       , bifunctors >= 4.1.1.1
                       , lens >= 4.2
                       , plow-extras-lens >= 0.1.0
+                      , numeric-tools >= 0.2.0.1
+                      , vector
+                      , statistics
 
 
 Test-Suite spec
