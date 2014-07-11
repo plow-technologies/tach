@@ -31,6 +31,8 @@ Library
                       , numeric-tools >= 0.2.0.1
                       , vector
                       , statistics
+                      , integration
+                      , parallel
 
 
 Test-Suite spec
