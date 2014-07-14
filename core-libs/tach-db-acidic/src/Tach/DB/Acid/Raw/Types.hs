@@ -21,17 +21,27 @@ import qualified DirectedKeys.Types           as DK
 import           GHC.Generics
 import           Tach.Impulse.Types.Impulse
 import           Tach.Impulse.Types.TimeValue
+import qualified Data.Set as S
 {-
     Storage types for tach-db
 
     This just relies on impulse-series
 -}
+
+data RawSeries key st en rep = RawSeries {
+    rawSeriesKey :: key
+   ,rawSeriesStart :: st
+   ,rawSeriesEnd :: en
+   ,rawSeriesRep :: rep
+} deriving (Generic, Typeable, Ord, Eq)
+
+
 newtype TVSimpleRawStore = TVSimpleRawStore {
   unTVSimpleRawStore :: (ImpulseSeries (ImpulseKey (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime))
-                            (ImpulsePeriod (V.Vector Double) Int) (ImpulseStart Int) (ImpulseEnd Int) (ImpulseRep (Set TVNoKey)))
+                            (ImpulsePeriod (V.Vector Double) Int) (ImpulseStart Int) (ImpulseEnd Int) (ImpulseRep (S.Set TVNoKey)))
 } deriving (Typeable, Generic)
 
-initialTVSimpleRawStore key = TVSimpleRawStore (ImpulseSeries (ImpulseKey key) (ImpulsePeriod V.empty 0) (ImpulseStart start) (ImpulseEnd end) (Impulse) 
+initialTVSimpleRawStore key = TVSimpleRawStore (ImpulseSeries (ImpulseKey key) (IPeriodConst 0) (ImpulseStart 0) (ImpulseEnd 0) (ImpulseRep S.empty))
 
 $(deriveSafeCopy 0 'base ''DK.DirectedKeyRaw)
 

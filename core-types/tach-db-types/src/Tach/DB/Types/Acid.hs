@@ -30,7 +30,6 @@ import           Data.Typeable
 import           Data.Wavelets.Scaling
 import           GHC.Generics
 import           Tach.Class.Queryable
-import           Tach.DB.Types
 import           Tach.DB.Types.Internal
 import           Tach.Impulse.Types.TimeValue
 import           Tach.Transformable.Types.Impulse
@@ -53,3 +52,5 @@ $(deriveSafeCopy 0 'base ''NewSeriesFactors)
 $(deriveSafeCopy 0 'base ''ImpulseTransformed)
 $(deriveSafeCopy 0 'base ''WaveletTransformed)
 $(deriveSafeCopy 0 'base ''TransformedStore)
+
+
