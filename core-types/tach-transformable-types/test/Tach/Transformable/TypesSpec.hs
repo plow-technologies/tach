@@ -3,7 +3,8 @@ module Tach.Transformable.TypesSpec (main, spec) where
 import Test.Hspec
 
 main :: IO ()
-main = hspec spec
+main = do
+    hspec spec
 
 spec :: Spec
 spec = do

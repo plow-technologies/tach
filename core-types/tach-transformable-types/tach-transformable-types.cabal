@@ -44,6 +44,20 @@ Test-Suite spec
   Main-Is:              Spec.hs
   Build-Depends:        base
                       , hspec
+                      , tach-impulse-series-types
+                      , tach-periodic
+                      , wavelets
+                      , containers
+                      , tach-typeclasses
+                      , bifunctors
+                      , lens
+                      , plow-extras-lens
+                      , numeric-tools
+                      , vector
+                      , statistics
+                      , integration
+                      , parallel
+                      , random
 
 Source-Repository head
   Type:                 git
