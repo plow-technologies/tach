@@ -1,4 +1,4 @@
-module Tach.Transformable.IntegrationSpec (main, spec, shouldBeWithin) where
+module Tach.Transformable.IntegrationSpec (main, spec) where
 
 import           Control.Applicative
 import qualified Data.Set                         as S
@@ -35,8 +35,6 @@ spec = do
           mesh = createLinearInterp tvNoKeyList
           times = (V.fromList (tvNkSimpleTime <$> tvNoKeyList))
           average = ((sum vals) / 100)
-      putStrLn . show $ average
-      putStrLn . show $ weightedAverageWindow mesh times (1,100)
       shouldBeWithin 0.01 (weightedAverageWindow mesh times (1,100)) average
     it "Should take the integral and match the integration library within 10% (floating point errors and approx. integration)" $ do
       gen <- getStdGen

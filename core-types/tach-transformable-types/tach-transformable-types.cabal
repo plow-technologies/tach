@@ -17,6 +17,7 @@ Library
                         Tach.Transformable.Types.Transform
                         Tach.Transformable.Types.Wavelet
                         Tach.Transformable.Types.Impulse
+                        Tach.Transformable.Types.Wavelet.Core
   Other-Modules:        Tach.Transformable.Types.Internal
 
   Build-Depends:        base >= 4 && < 5

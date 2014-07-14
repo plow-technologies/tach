@@ -9,6 +9,7 @@ import           Tach.DB.Types.Internal
 import           Tach.Impulse.Types.TimeValue
 import           Tach.Transformable.Types.Impulse
 import           Tach.Transformable.Types.Wavelet
+import           Tach.Transformable.Types.Wavelet.Core
 import           Tach.Types.Classify
 import           Tach.Types.Classify.Lens
 
