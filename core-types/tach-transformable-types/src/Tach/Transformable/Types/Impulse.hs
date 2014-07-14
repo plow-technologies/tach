@@ -73,6 +73,8 @@ ys = [1.0,6.0,4.0,2.0,1.0,4,5,1,2,4,4,5,23,3,2,4,5,2,37,2,7,4,8,4,9,3,8,5,6,4,5,
 tvnkl :: [TVNoKey]
 tvnkl = tvnkFromList $ zip xs ys
 
+-- | Query an ImpulseTransformed store given a step and bounds. The result will be a list of TVNoKeys
+-- with a length of ((end - start) / step) and a value of the average value surrounding the key from t + (step/2) and t - (step/2)
 queryImpulseSmooth :: ImpulseTransformed -> Int -> Int -> Int -> [TVNoKey]
 queryImpulseSmooth tf step start end = (\(time, bnds) -> TVNoKey time (weightedAverageWindow interp (V.fromList times) bnds)) <$> windows
   where halfStep = step `div` 2
@@ -81,11 +83,15 @@ queryImpulseSmooth tf step start end = (\(time, bnds) -> TVNoKey time (weightedA
         interp = createLinearInterp . F.toList . impulseRepresentation $ tf 
         createBounds x = (x-halfStep,x+halfStep)
 
+-- | Integrate over an entire window and then divide by the window size in order to find the
+-- average of the area 
 weightedAverageWindow :: LinearInterp (ImpulseMesh Double) -> V.Vector Int -> (Int, Int) -> Double
 weightedAverageWindow interp times window@(start,end) = (integrateWindow interp times window) / dt
   where dt = fromIntegral $ end - start
 
 
+-- | Find the integral for a series of points given a list of times to shorten the number of
+-- calculations to be a faster O(n)
 integrateWindow :: LinearInterp (ImpulseMesh Double) -> V.Vector Int -> (Int, Int) -> Double
 integrateWindow interp times (start,end) = sumRes-- result ((trap (at interp) (fromIntegral start) (fromIntegral end)) !! 0) -- quadBestEst $ quadSimpson defQuad (fromIntegral start, fromIntegral end) (at interp)
   where filteredTimes = V.findIndices (\t -> t > start && t < end) times
@@ -94,7 +100,8 @@ integrateWindow interp times (start,end) = sumRes-- result ((trap (at interp) (f
         finalTimes = V.zip times' higherTimes
         sumRes = V.sum $ V.map (calcArea interp) finalTimes
 
-
+-- | Calculate the area of a linear interpreted graph given a start and end
+-- Used for the start and end of a window or the internal portion of a window
 calcArea :: LinearInterp (ImpulseMesh Double) -> (Int, Int) -> Double
 calcArea interp (x1,x2) = ((val1 + val2) / 2) * dt
  where dt = fromIntegral $ x2 - x1
@@ -109,6 +116,7 @@ calcArea interp (x1,x2) = ((val1 + val2) / 2) * dt
 trimWindowToBounds :: (Int,Int) -> (Int, Int) -> (Int, Int)
 trimWindowToBounds (totalStart, totalEnd) (windowStart, windowEnd) = (max totalStart windowStart, min totalEnd windowEnd)
 
+-- | Find the maximum index of an ImpulseMesh where x >= a where a is a value in the impulseMesh
 findIndex :: ImpulseMesh Double -> Double -> Int
 findIndex mesh x = V.maximum . V.findIndices (\a -> a <= x) $ impulseMeshRep mesh
 
@@ -116,12 +124,14 @@ findIndex mesh x = V.maximum . V.findIndices (\a -> a <= x) $ impulseMeshRep mes
 tvnkFromList :: [(Int, Double)] -> [TVNoKey]
 tvnkFromList l = (\(t ,v) -> TVNoKey t v) <$> l
 
+-- | Create a linear interpolation from a list of TVNoKeys in order to find values between points
 createLinearInterp :: [TVNoKey] -> LinearInterp (ImpulseMesh Double)
 createLinearInterp tvnklist = linearInterp $ tabulate mesh dVec
   where dVec = V.fromList . F.toList . fmap (tvNkSimpleValue) $ impulseRepresentation tf
         mesh = createMesh tf
         tf = transformImpulse tvnklist
 
+-- | Create a mesh for linear interpolation
 createMesh :: ImpulseTransformed -> ImpulseMesh Double
 createMesh tf = ImpulseMesh rep (mn) (mx)
   where rep = V.fromList . F.toList $ ( fromIntegral . tvNkSimpleTime <$> (impulseRepresentation tf) )
@@ -144,6 +154,9 @@ transformImpulse tvnklist = ImpulseTransformed rep start end
 impulseBounds :: (ImpulseTransformed) -> (Int, Int)
 impulseBounds impls = (impulseStart impls, impulseEnd impls)
 
+
+
+-- Functions used on sequences 
 
 headSeq :: S.Seq a -> a
 headSeq = fromJust . headMaySeq
