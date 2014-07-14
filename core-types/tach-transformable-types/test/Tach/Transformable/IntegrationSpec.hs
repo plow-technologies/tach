@@ -1,15 +1,16 @@
-module Tach.Transformable.IntegrationSpec (main, spec) where
+module Tach.Transformable.IntegrationSpec (main, spec, shouldBeWithin) where
 
 import           Control.Applicative
 import qualified Data.Set                         as S
 import qualified Data.Vector                      as V
 import           Numeric.Integration.TanhSinh
 import           Numeric.Tools.Interpolation
+import           System.IO
 import           System.Random
 import           Tach.Impulse.Types.TimeValue
 import           Tach.Transformable.Types.Impulse
 import           Test.Hspec
-
+import Test.HUnit.Base
 
 
 main :: IO ()
@@ -36,7 +37,7 @@ spec = do
           average = ((sum vals) / 100)
       putStrLn . show $ average
       putStrLn . show $ weightedAverageWindow mesh times (1,100)
-      weightedAverageWindow mesh times (1,100) `shouldSatisfy` withinPercent 0.01 average -- (\a -> (a < (average + 0.01 * average) && (a > average - 0.01 * average)))
+      shouldBeWithin 0.01 (weightedAverageWindow mesh times (1,100)) average
     it "Should take the integral and match the integration library within 10% (floating point errors and approx. integration)" $ do
       gen <- getStdGen
       let vals = randomList 20 (600,1000) gen
@@ -46,7 +47,7 @@ spec = do
           aprox = result . (\xs -> xs !! 0) $ simpson (at mesh) (fromIntegral $ V.head times) (fromIntegral $ V.last times)
           res = integrateWindow mesh times (1,20)
       putStrLn $  show aprox ++ " - " ++ show res
-      res  `shouldSatisfy` (withinPercent 0.1 $ aprox)
+      shouldBeWithin 0.1 res aprox
     it "Should integrate a constant across a non-uniform time list and remain at the constant for the average" $ do
       gen <- getStdGen
       let ts = randomList 20 (0,1000) gen :: [Int]
@@ -55,8 +56,14 @@ spec = do
           times = (V.fromList (tvNkSimpleTime <$> tvNoKeyList))
           res = weightedAverageWindow mesh times (V.head times, V.last times)
       putStrLn $ "actual: " ++ (show 20) ++ " result: " ++ show res
-      res `shouldSatisfy` withinPercent 0.005 20
+      shouldBeWithin 0.005 res 20
 
+shouldBeWithin :: (Ord a, Num a, Show a) => a -> a -> a -> IO ()
+shouldBeWithin percent result expected = do
+  let res = withinPercent percent expected result
+  if res
+    then return ()
+    else assertFailure $ (show result) ++ " is not within " ++ (show percent) ++ "% of the expected: " ++ (show expected)
 
 withinPercent ::  (Ord a, Num a) => a -> a -> a -> Bool
 withinPercent percent expected result = above && below

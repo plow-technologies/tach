@@ -58,6 +58,7 @@ Test-Suite spec
                       , integration
                       , parallel
                       , random
+                      , HUnit
 
 Source-Repository head
   Type:                 git

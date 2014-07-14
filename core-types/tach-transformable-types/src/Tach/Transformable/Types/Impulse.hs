@@ -45,6 +45,8 @@ instance Bound (ImpulseTransformed) where
 instance Queryable (ImpulseTransformed) TVNoKey where
   query step start end impls = I.toInsertable $ queryImpulse impls step start end
 
+-- | A mesh for the linear interpolation in order to keep track of times
+-- of a mesh when compared to values
 data ImpulseMesh a  = ImpulseMesh {
   impulseMeshRep :: V.Vector a
 , impulseMeshLower :: Double
