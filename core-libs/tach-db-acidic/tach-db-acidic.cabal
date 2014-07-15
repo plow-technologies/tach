@@ -17,6 +17,7 @@ Library
                         Tach.DB.Acid.Raw
                         Tach.DB.Acid.Raw.Create
                         Tach.DB.Acid.Raw.Delete
+                        Tach.DB.Acid.Raw.Search
                         Tach.DB.Acid.Raw.Read
                         Tach.DB.Acid.Raw.Types
                         Tach.DB.Acid.Transform

@@ -37,14 +37,11 @@ getTVSimpleRaw key time = readFromTVRawStoreWith key (elookupLE (TVNoKey time 0.
 
 getManyTVSimpleRaw :: RawKey -> TVSStart -> TVSEnd -> Query TVSimpleRawStore (Either ErrorValue (Set TVNoKey))
 getManyTVSimpleRaw key start end
-    | unStart start <= unEnd end = readFromTVRawStoreWith key (\s -> Right . trimOff $ s)
+    | unStart start <= unEnd end = readFromTVRawStoreWith key (\s -> Right . (trimOff (fakeTvNoKeyStart, fakeTvNoKeyEnd)) $ s)
     | otherwise = return . Left $ ErrorValue ErrorInvalidRange
       where
         fakeTvNoKeyStart = TVNoKey (unStart start) 0.0
         fakeTvNoKeyEnd = TVNoKey (unEnd end) 0.0
-        trimOff = trimOffLess . trimOffMore
-        trimOffLess s = snd $ S.split fakeTvNoKeyStart s
-        trimOffMore s = fst $ S.split fakeTvNoKeyEnd s
 
 getTVSimpleRawSize :: RawKey -> Query TVSimpleRawStore (Either ErrorValue Int)
 getTVSimpleRawSize key = readFromTVRawStoreWith key (\s -> Right . S.size $ s)

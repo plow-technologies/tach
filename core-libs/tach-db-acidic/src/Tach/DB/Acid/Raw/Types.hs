@@ -16,7 +16,6 @@ module Tach.DB.Acid.Raw.Types where
 
 import           CorePrelude
 import           Data.SafeCopy                (base, deriveSafeCopy)
-import qualified Data.Vector                  as V
 import qualified DirectedKeys.Types           as DK
 import           GHC.Generics
 import           Tach.Impulse.Types.Impulse
