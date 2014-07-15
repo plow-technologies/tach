@@ -10,8 +10,9 @@ import           Tach.DB.Acid.Raw.Types
 
 {- The seperated modules for Tach.DB.Acid.Raw -}
 import           Tach.DB.Acid.Raw.Create as Tach.DB.Acid.Raw
-import           Tach.DB.Acid.Raw.Delete as Tach.DB.Acid.Raw
 import           Tach.DB.Acid.Raw.Read   as Tach.DB.Acid.Raw
+import           Tach.DB.Acid.Raw.Delete as Tach.DB.Acid.Raw
+import           Tach.DB.Acid.Raw.Search as Tach.DB.Acid.Search
 import           Tach.DB.Acid.Raw.Types  as Tach.DB.Acid.Raw
 import           Tach.Impulse.Types.TimeValue  as Tach.DB.Acid.Raw
 
@@ -29,4 +30,5 @@ import           Tach.Impulse.Types.TimeValue  as Tach.DB.Acid.Raw
 $(makeAcidic ''TVSimpleRawStore [ 'insertTVSimpleRaw, 'insertManyTVSimpleRaw
                                 , 'getTVSimpleRaw    , 'getManyTVSimpleRaw
                                 , 'deleteTVSimpleRaw , 'deleteManyTVSimpleRaw
+                                , 'queryTvSimpleRaw , 'queryTvSimple
                                 , 'getTVSimpleRawSize, 'getTVSimpleRawTimeBounds ])
