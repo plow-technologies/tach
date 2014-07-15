@@ -27,5 +27,5 @@ instance Insertable [] where
   insert xs x = xs ++ [x]
   empty = []
 
-toInsertable :: (Insertable f, F.Foldable t, Ord a) => t a -> f a
+toInsertable :: (Insertable i, F.Foldable f, Ord a) => f a -> i a
 toInsertable xs = F.foldl (\b a -> insert b a) empty xs

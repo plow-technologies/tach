@@ -31,9 +31,18 @@ import           Tach.Transformable.Types.Wavelet.Core
 import Numeric.Tools.Integration
 import Numeric.Integration.TanhSinh
 import qualified Data.Vector.Unboxed         as U
+import qualified Data.Vector.Generic as GV
+
+
+
+--newtype instance MVector s Int = MV_Int (P.MVector s Int)
+--newtype instance Vector    Int = V_Int  (P.Vector    Int)
+--instance Unbox Int
+--primMVector(Int, MV_Int)
+--primVector(Int, V_Int, MV_Int)
 
 data ImpulseTransformed = ImpulseTransformed {
-    impulseRepresentation :: S.Seq TVNoKey
+    impulseRepresentation :: LinearInterp (ImpulseMesh Double)
   , impulseStart          :: Int
   , impulseEnd            :: Int
 } deriving (Show, Ord, Eq, Typeable)
@@ -45,6 +54,11 @@ instance Bound (ImpulseTransformed) where
 instance Queryable (ImpulseTransformed) TVNoKey where
   query step start end impls = I.toInsertable $ queryImpulse impls step start end
 
+
+--unboxedToInsertable :: (I.Insertable i, U.Unbox a) => U.Vector a -> i a
+--unboxedToInsertable v = U.foldl (\b a -> I.insert b a) empty xs
+
+
 -- | A mesh for the linear interpolation in order to keep track of times
 -- of a mesh when compared to values
 data ImpulseMesh a  = ImpulseMesh {
@@ -54,7 +68,7 @@ data ImpulseMesh a  = ImpulseMesh {
 } deriving (Show, Ord, Eq, Typeable)
 
 
-instance Indexable (ImpulseMesh a) where
+instance (U.Unbox a) => Indexable (ImpulseMesh a) where
   type IndexVal (ImpulseMesh a) = a
   size = size . impulseMeshRep
   unsafeIndex = unsafeIndex . impulseMeshRep
@@ -82,7 +96,7 @@ queryImpulseSmooth tf step start end = (\(time, bnds) -> TVNoKey time (weightedA
   where halfStep = step `div` 2
         times = [start,start+step..end]
         windows = (\t -> (t,(trimWindowToBounds (start,end)) . createBounds $ t)) <$> times
-        interp = createLinearInterp . F.toList . impulseRepresentation $ tf 
+        interp = impulseRepresentation tf
         createBounds x = (x-halfStep,x+halfStep)
 
 -- | Integrate over an entire window and then divide by the window size in order to find the
@@ -128,59 +142,33 @@ tvnkFromList l = (\(t ,v) -> TVNoKey t v) <$> l
 
 -- | Create a linear interpolation from a list of TVNoKeys in order to find values between points
 createLinearInterp :: [TVNoKey] -> LinearInterp (ImpulseMesh Double)
-createLinearInterp tvnklist = linearInterp $ tabulate mesh dVec
-  where dVec = V.fromList . F.toList . fmap (tvNkSimpleValue) $ impulseRepresentation tf
-        mesh = createMesh tf
-        tf = transformImpulse tvnklist
+createLinearInterp tvnklist = linearInterp $ tabulate mesh values
+  where mesh = createMesh tvnklist
+        values = V.fromList $ tvNkSimpleValue <$> tvnklist
 
 -- | Create a mesh for linear interpolation
-createMesh :: ImpulseTransformed -> ImpulseMesh Double
-createMesh tf = ImpulseMesh rep (mn) (mx)
-  where rep = V.fromList . F.toList $ ( fromIntegral . tvNkSimpleTime <$> (impulseRepresentation tf) )
+createMesh :: [TVNoKey] -> ImpulseMesh Double
+createMesh tf = ImpulseMesh rep mn mx
+  where rep = V.fromList $ fromIntegral . tvNkSimpleTime <$>  tf
         (mn,mx) = minMax rep
 
-reconstructImpulse :: (ImpulseTransformed) -> [TVNoKey]
-reconstructImpulse = F.toList . impulseRepresentation
+reconstructImpulse :: ImpulseTransformed -> V.Vector TVNoKey
+reconstructImpulse tf = GV.zipWith (\t v -> TVNoKey (round t) v) times vals
+  where interp = impulseRepresentation tf
+        times = impulseMeshRep . interpolationMesh $ interp
+        vals = GV.fromList . GV.toList . interpolationTable $ interp
 
-queryImpulse :: (ImpulseTransformed) -> Int -> Int -> Int -> S.Seq TVNoKey
-queryImpulse tf step start end = trim . impulseRepresentation $ tf
-  where trim = (S.dropWhileL (\x -> (tvNkSimpleTime x) >= start)) . (S.dropWhileR (\x -> (tvNkSimpleTime x) <= end))
+queryImpulse :: ImpulseTransformed -> Int -> Int -> Int -> V.Vector TVNoKey
+queryImpulse tf step start end = trim . reconstructImpulse $ tf
+  where trim = V.filter (\t -> tvNkSimpleTime t >= start && tvNkSimpleTime t <= end)
 
 transformImpulse :: [TVNoKey] -> (ImpulseTransformed)
 transformImpulse tvnklist = ImpulseTransformed rep start end
-  where rep = (S.unstableSortBy (compare `on` tvNkSimpleTime)) . S.fromList $ tvnklist -- Ensure that the list is sorted on time
-        start = tvNkSimpleTime . headSeq $ rep
-        end = tvNkSimpleTime . lastSeq $ rep
+  where rep = createLinearInterp $ tvnklist -- Ensure that the list is sorted on time
+        vRep = impulseMeshRep . interpolationMesh $ rep
+        start = round . V.head $ vRep
+        end = round . V.last $ vRep
 
 
 impulseBounds :: (ImpulseTransformed) -> (Int, Int)
 impulseBounds impls = (impulseStart impls, impulseEnd impls)
-
-
-
--- Functions used on sequences 
-
-headSeq :: S.Seq a -> a
-headSeq = fromJust . headMaySeq
-
-headMaySeq :: S.Seq a -> Maybe a
-headMaySeq aSeq =
-  if (len >= 1)
-    then
-      Just $ S.index aSeq (len - 1)
-    else
-      Nothing
-  where len = S.length aSeq
-
-
-lastSeq :: S.Seq a -> a
-lastSeq = fromJust . lastMaySeq
-
-lastMaySeq :: S.Seq a -> Maybe a
-lastMaySeq aSeq =
-  if (len >= 1)
-    then
-      Just $ S.index aSeq (len - 1)
-    else
-      Nothing
-  where len = S.length aSeq

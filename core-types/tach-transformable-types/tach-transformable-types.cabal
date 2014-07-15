@@ -1,5 +1,5 @@
 Name:                   tach-transformable-types
-Version:                0.1.6
+Version:                0.1.7
 Author:                 Scott Murphy <scottmurphy09@gmail.com>
 Maintainer:             Scott Murphy <scottmurphy09@gmail.com>
 License:                BSD3
@@ -29,7 +29,7 @@ Library
                       , bifunctors >= 4.1.1.1
                       , lens >= 4.2
                       , plow-extras-lens >= 0.1.0
-                      , numeric-tools >= 0.2.0.1
+                      , numeric-tools >= 0.2.0.1.7569
                       , vector
                       , statistics
                       , integration
