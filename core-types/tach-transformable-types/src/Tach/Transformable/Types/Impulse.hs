@@ -36,17 +36,6 @@ tvnkl = tvnkFromList $ zip xs ys
 tvnkFromList :: [(Int, Double)] -> [TVNoKey]
 tvnkFromList l = (\(t ,v) -> TVNoKey t v) <$> l
 
--- | Create a linear interpolation from a list of TVNoKeys in order to find values between points
-createLinearInterp :: [TVNoKey] -> LinearInterp (ImpulseMesh Double)
-createLinearInterp tvnklist = linearInterp $ tabulate mesh values
-  where mesh = createMesh tvnklist
-        values = V.fromList $ tvNkSimpleValue <$> tvnklist
-
--- | Create a mesh for linear interpolation
-createMesh :: [TVNoKey] -> ImpulseMesh Double
-createMesh tf = ImpulseMesh rep mn mx
-  where rep = V.fromList $ fromIntegral . tvNkSimpleTime <$>  tf
-        (mn,mx) = minMax rep
 
 transformImpulse :: [TVNoKey] -> ImpulseTransformed
 transformImpulse tvnklist = ImpulseTransformed rep start end

@@ -33,6 +33,7 @@ import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 import           Numeric.Classes.Indexing
 import qualified Data.Vector.Generic as GV
+import Statistics.Function
 
 
 
@@ -52,38 +53,58 @@ instance Bound (ImpulseTransformed) where
 instance Queryable (ImpulseTransformed) TVNoKey where
   query step start end impls = I.toInsertable $ queryImpulse impls step start end
 
+-- | Create a linear interpolation from a list of TVNoKeys in order to find values between points
+createLinearInterp :: [TVNoKey] -> LinearInterp (ImpulseMesh Double)
+createLinearInterp tvnklist = linearInterp $ tabulate mesh values
+  where mesh = createMesh tvnklist
+        values = V.fromList $ tvNkSimpleValue <$> tvnklist
+
+-- | Create a mesh for linear interpolation
+createMesh :: [TVNoKey] -> ImpulseMesh Double
+createMesh tf = ImpulseMesh rep mn mx
+  where rep = V.fromList $ fromIntegral . tvNkSimpleTime <$>  tf
+        (mn,mx) = minMax rep
+
+
+-- | Get all values 
 reconstructImpulse :: ImpulseTransformed -> V.Vector TVNoKey
 reconstructImpulse tf = GV.zipWith (\t v -> TVNoKey (round t) v) times vals
   where interp = impulseRepresentation tf
         times = impulseMeshRep . interpolationMesh $ interp
         vals = GV.fromList . GV.toList . interpolationTable $ interp
 
--- | Query an ImpulseTransformed store given a step and bounds. The result will be a list of TVNoKeys
--- with a length of ((end - start) / step) and a value of the average value surrounding the key from t + (step/2) and t - (step/2)
+
 queryImpulseSmooth :: ImpulseTransformed -> Int -> Int -> Int -> [TVNoKey]
-queryImpulseSmooth tf step start end = (\(time, bnds) -> TVNoKey time (weightedAverageWindow interp (V.fromList times) bnds)) <$> windows
-  where halfStep = step `div` 2
-        times = [start,start+step..end]
-        windows = (\t -> (t,(trimWindowToBounds (start,end)) . createBounds $ t)) <$> times
-        interp = impulseRepresentation tf
-        createBounds x = (x-halfStep,x+halfStep)
+queryImpulseSmooth = queryLinearIterpSmooth . impulseRepresentation 
+
+
+-- | Query a Linear Interpolation store given a step and bounds. The result will be a list of TVNoKeys
+-- with a length of ((end - start) / step) and a value of the average value surrounding the key from t + (step/2) and t - (step/2)
+queryLinearIterpSmooth :: LinearInterp (ImpulseMesh Double) -> Int -> Int -> Int -> [TVNoKey]
+queryLinearIterpSmooth interp step start end = (\(time, bnds) -> TVNoKey time (weightedAverageWindow interp bnds)) <$> windows
+    where halfStep = step `div` 2
+          times = [start,start+step..end]
+          windows = (\t -> (t,(trimWindowToBounds (start,end)) . createBounds $ t)) <$> times
+          createBounds x = (x - halfStep, x + halfStep)
 
 -- | Integrate over an entire window and then divide by the window size in order to find the
 -- average of the area 
-weightedAverageWindow :: LinearInterp (ImpulseMesh Double) -> V.Vector Int -> (Int, Int) -> Double
-weightedAverageWindow interp times window@(start,end) = (integrateWindow interp times window) / dt
+weightedAverageWindow :: LinearInterp (ImpulseMesh Double) -> (Int, Int) -> Double
+weightedAverageWindow interp window@(start,end) = (integrateWindow interp window) / dt
   where dt = fromIntegral $ end - start
 
 
 -- | Find the integral for a series of points given a list of times to shorten the number of
 -- calculations to be a faster O(n)
-integrateWindow :: LinearInterp (ImpulseMesh Double) -> V.Vector Int -> (Int, Int) -> Double
-integrateWindow interp times (start,end) = sumRes-- result ((trap (at interp) (fromIntegral start) (fromIntegral end)) !! 0) -- quadBestEst $ quadSimpson defQuad (fromIntegral start, fromIntegral end) (at interp)
-  where filteredTimes = V.findIndices (\t -> t > start && t < end) times
-        times' = V.cons start (V.snoc (V.map (times !) filteredTimes) end) 
-        higherTimes = V.tail times'
-        finalTimes = V.zip times' higherTimes
-        sumRes = V.sum $ V.map (calcArea interp) finalTimes
+-- 
+integrateWindow :: LinearInterp (ImpulseMesh Double) -> (Int, Int) -> Double
+integrateWindow interp (start,end) = sumRes
+  where times = V.map round $ impulseMeshRep . interpolationMesh $ interp  -- Get a list of all times from the linear interpolator
+        filteredTimes = V.findIndices (\t -> t > start && t < end) times   -- Filter all times that aren't between the bounds
+        times' = V.cons start (V.snoc (V.map (times !) filteredTimes) end) -- Add the start and end times to the filtered times
+        higherTimes = V.tail times'                                        
+        finalTimes = V.zip times' higherTimes                              -- Offset the times to make the bounds so [1,2,3,4] becomes [(1,2),(2,3),(3,4)]
+        sumRes = V.sum $ V.map (calcArea interp) finalTimes                -- Add the results of the areas of each of the smaller times
 
 
 -- | Takes the total bounds and the window bounds and then returns a modified window bounds such that
