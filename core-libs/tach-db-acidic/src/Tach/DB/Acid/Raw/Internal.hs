@@ -31,8 +31,10 @@ import           Data.Aeson
 import           Tach.DB.Acid.Raw.Lens
 import           Tach.DB.Acid.Raw.Types
 import           Tach.DB.Acid.Types
+import           Tach.DB.Types.Raw.Types
 import           Tach.Impulse.Types.Impulse
 import           Tach.Impulse.Types.TimeValue
+
 
 
 -- | Generalized function to modify the underlying set of a tvstore

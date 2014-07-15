@@ -12,6 +12,7 @@ module Tach.DB.Acid.Raw.Lens where
 import           BasicPrelude
 import           Control.Lens
 import           Tach.DB.Acid.Raw.Types
+import           Tach.DB.Types.Raw.Types
 import           Tach.Impulse.Types.Impulse
 import           Tach.Impulse.Types.TimeValue
 

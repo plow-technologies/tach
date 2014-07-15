@@ -16,27 +16,18 @@ module Tach.DB.Acid.Raw.Types where
 
 import           CorePrelude
 import           Data.SafeCopy                (base, deriveSafeCopy)
+import qualified Data.Set                     as S
 import qualified DirectedKeys.Types           as DK
 import           GHC.Generics
+import           Tach.DB.Types.Raw.Types
 import           Tach.Impulse.Types.Impulse
 import           Tach.Impulse.Types.TimeValue
-import qualified Data.Set as S
 {-
     Storage types for tach-db
 
     This just relies on impulse-series
 -}
 
-data RawSeries key st en rep = RawSeries {
-    rawSeriesKey :: key
-   ,rawSeriesStart :: st
-   ,rawSeriesEnd :: en
-   ,rawSeriesRep :: rep
-} deriving (Generic, Typeable, Ord, Eq)
-
-newtype RawStart = RawStart { unRawStart :: Int } deriving (Eq, Show, Typeable)
-newtype RawEnd = RawEnd { unRawEnd :: Int } deriving (Eq, Show, Typeable)
-newtype RawKey = RawKey { unRawKey :: DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime } deriving (Eq, Typeable)
 
 newtype TVSimpleRawStore = TVSimpleRawStore {
   unTVSimpleRawStore :: RawSeries RawKey RawStart RawEnd (S.Set TVNoKey)
@@ -68,4 +59,3 @@ $(deriveSafeCopy 0 'base ''RawKey)
 
 -- Our Safecopy instance
 $(deriveSafeCopy 0 'base ''TVSimpleRawStore)
-$(deriveSafeCopy 0 'base ''TVNoKey)

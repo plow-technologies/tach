@@ -28,6 +28,7 @@ import           Data.Acid
 import           Tach.DB.Acid.Raw.Internal
 import           Tach.DB.Acid.Raw.Types
 import           Tach.DB.Acid.Types
+import           Tach.DB.Types.Raw.Types
 import           Tach.Impulse.Types.TimeValue
 
 
