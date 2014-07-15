@@ -31,5 +31,5 @@ makeClassy_ ''RawSeries
 
 
 
-_TVSimpleImpulseRep :: Lens' TVSimpleRawStore (Set TVNoKey)
-_TVSimpleImpulseRep = _unTVSimpleRawStore . _rawSeriesRep
+_TVSimpleRawRep :: Lens' TVSimpleRawStore (Set TVNoKey)
+_TVSimpleRawRep = _unTVSimpleRawStore . _rawSeriesRep

@@ -6,11 +6,9 @@
 {-# LANGUAGE TypeFamilies          #-}
 
 
-module Tach.DB.Acid.Raw.Read (
-    getTVSimpleRaw
-  , getManyTVSimpleRaw
-  , getTVSimpleRawSize
-  , getTVSimpleRawTimeBounds
+module Tach.DB.Acid.Raw.Searc (
+    queryTvSimpleImpulseRaw
+  , queryTvSimpleImpulse
 ) where
 
 {- General Haskell related-}
@@ -32,11 +30,11 @@ import           Tach.Impulse.Types.TimeValueSeries (TVSEnd, TVSStart)
 
 
 
-getTVSimpleRaw :: RawKey -> Int -> Query TVSimpleRawStore (Either ErrorValue TVNoKey)
-getTVSimpleRaw key time = readFromTVRawStoreWith key (elookupLE (TVNoKey time 0.0))
+getTVSimpleImpulseRaw :: RawKey -> Int -> Query TVSimpleRawStore (Either ErrorValue TVNoKey)
+getTVSimpleImpulseRaw key time = readFromTVRawStoreWith key (elookupLE (TVNoKey time 0.0))
 
-getManyTVSimpleRaw :: RawKey -> TVSStart -> TVSEnd -> Query TVSimpleRawStore (Either ErrorValue (Set TVNoKey))
-getManyTVSimpleRaw key start end
+getManyTVSimpleImpulseRaw :: RawKey -> TVSStart -> TVSEnd -> Query TVSimpleRawStore (Either ErrorValue (Set TVNoKey))
+getManyTVSimpleImpulseRaw key start end
     | unStart start <= unEnd end = readFromTVRawStoreWith key (\s -> Right . trimOff $ s)
     | otherwise = return . Left $ ErrorValue ErrorInvalidRange
       where
@@ -46,11 +44,11 @@ getManyTVSimpleRaw key start end
         trimOffLess s = snd $ S.split fakeTvNoKeyStart s
         trimOffMore s = fst $ S.split fakeTvNoKeyEnd s
 
-getTVSimpleRawSize :: RawKey -> Query TVSimpleRawStore (Either ErrorValue Int)
-getTVSimpleRawSize key = readFromTVRawStoreWith key (\s -> Right . S.size $ s)
+getTVSimpleImpulseRawSize :: RawKey -> Query TVSimpleRawStore (Either ErrorValue Int)
+getTVSimpleImpulseRawSize key = readFromTVRawStoreWith key (\s -> Right . S.size $ s)
 
-getTVSimpleRawTimeBounds :: RawKey -> Query TVSimpleRawStore (Either ErrorValue (RawStart, RawEnd ))
-getTVSimpleRawTimeBounds tk = queryFcn <$> ask
+getTVSimpleImpulseRawTimeBounds :: RawKey -> Query TVSimpleRawStore (Either ErrorValue (RawStart, RawEnd ))
+getTVSimpleImpulseRawTimeBounds tk = queryFcn <$> ask
   where
     isKey (TVSimpleRawStore (RawSeries {rawSeriesKey = k})) = k == tk
     queryFcn st

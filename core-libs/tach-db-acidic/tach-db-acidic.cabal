@@ -41,7 +41,7 @@ Library
                       , lens >= 4.2
                       , mtl >= 2.2.1
                       , aeson >= 0.7.0.6
-                      , tach-transformable-types >= 0.1.7
+                      , tach-transformable-types >= 0.1.7.1
 
 
 Test-Suite spec

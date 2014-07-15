@@ -50,7 +50,7 @@ modifyTVRawStoreWith withFunc key = do
 updateTVRawStoreWith :: TVSimpleRawStore -> (Set TVNoKey -> Set TVNoKey) -> (TVSimpleRawStore, Int)
 updateTVRawStoreWith store withFunc = (st'', sz)
   where st' = over _unTVSimpleRawStore insertTimeValue store
-        sz = views _TVSimpleImpulseRep size st'
+        sz = views _TVSimpleRawRep size st'
         insertTimeValue = (over (_rawSeriesRep ) withFunc)
         st'' = (over _unTVSimpleRawStore (updateLower . updateHigher) st')
         newSet = (view (_unTVSimpleRawStore . _rawSeriesRep ) st')
@@ -62,6 +62,6 @@ updateTVRawStoreWith store withFunc = (st'', sz)
 readFromTVRawStoreWith :: RawKey -> (Set TVNoKey -> Either ErrorValue b) -> Query TVSimpleRawStore (Either ErrorValue b)
 readFromTVRawStoreWith key withFunc = queryFcn <$> ask
   where queryFcn st
-          |(isKey st) = views _TVSimpleImpulseRep withFunc st
+          |(isKey st) = views _TVSimpleRawRep withFunc st
           |otherwise   = Left $ ErrorValue ErrorIncorrectKey
         isKey (TVSimpleRawStore (RawSeries {rawSeriesKey = k})) = k == key

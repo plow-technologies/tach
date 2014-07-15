@@ -12,8 +12,8 @@
 
 
 module Tach.DB.Acid.Raw.Delete (
-  deleteTVSimpleImpulseRaw
-, deleteManyTVSimpleImpulseRaw
+  deleteTVSimpleRaw
+, deleteManyTVSimpleRaw
 ) where
 
 {- General Haskell related-}
@@ -32,9 +32,9 @@ import           Tach.Impulse.Types.TimeValue
 
 
 -- | O(log n) Removes an item from the given store and updates the bounds
-deleteTVSimpleImpulseRaw :: RawKey -> TVNoKey -> Update TVSimpleRawStore (Either ErrorValue SuccessValue)
-deleteTVSimpleImpulseRaw key item = modifyTVRawStoreWith (S.delete item) key
+deleteTVSimpleRaw :: RawKey -> TVNoKey -> Update TVSimpleRawStore (Either ErrorValue SuccessValue)
+deleteTVSimpleRaw key item = modifyTVRawStoreWith (S.delete item) key
 
 -- | O(n + m) Removes an a set from the given store and updates the bounds
-deleteManyTVSimpleImpulseRaw :: RawKey -> (S.Set TVNoKey) -> Update TVSimpleRawStore (Either ErrorValue SuccessValue)
-deleteManyTVSimpleImpulseRaw key items = modifyTVRawStoreWith (\s -> s `S.difference` items) key
+deleteManyTVSimpleRaw :: RawKey -> (S.Set TVNoKey) -> Update TVSimpleRawStore (Either ErrorValue SuccessValue)
+deleteManyTVSimpleRaw key items = modifyTVRawStoreWith (\s -> s `S.difference` items) key

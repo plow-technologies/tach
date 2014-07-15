@@ -12,8 +12,8 @@
 
 
 module Tach.DB.Acid.Raw.Create (
-  insertTVSimpleImpulseRaw
-, insertManyTVSimpleImpulseRaw
+  insertTVSimpleRaw
+, insertManyTVSimpleRaw
 ) where
 
 {- General Haskell related-}
@@ -31,9 +31,9 @@ import           Tach.DB.Acid.Types
 import           Tach.Impulse.Types.TimeValue
 
 -- | O(log n) Inserts an item into the store and updates the bounds 
-insertTVSimpleImpulseRaw :: RawKey -> TVNoKey -> Update TVSimpleRawStore (Either ErrorValue SuccessValue)
-insertTVSimpleImpulseRaw key item = modifyTVRawStoreWith (S.insert item) key
+insertTVSimpleRaw :: RawKey -> TVNoKey -> Update TVSimpleRawStore (Either ErrorValue SuccessValue)
+insertTVSimpleRaw key item = modifyTVRawStoreWith (S.insert item) key
 
 -- | O(n * log n) Inserts a set of items into the store and updates the bounds 
-insertManyTVSimpleImpulseRaw :: RawKey -> (S.Set TVNoKey) -> Update TVSimpleRawStore (Either ErrorValue SuccessValue)
-insertManyTVSimpleImpulseRaw key items = modifyTVRawStoreWith (S.union items) key
+insertManyTVSimpleRaw :: RawKey -> (S.Set TVNoKey) -> Update TVSimpleRawStore (Either ErrorValue SuccessValue)
+insertManyTVSimpleRaw key items = modifyTVRawStoreWith (S.union items) key

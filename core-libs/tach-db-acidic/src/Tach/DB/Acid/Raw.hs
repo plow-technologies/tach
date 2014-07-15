@@ -26,7 +26,7 @@ import           Tach.Impulse.Types.TimeValue  as Tach.DB.Acid.Raw
 -}
 
 
-$(makeAcidic ''TVSimpleRawStore [ 'insertTVSimpleImpulseRaw, 'insertManyTVSimpleImpulseRaw
-                                , 'getTVSimpleImpulseRaw    , 'getManyTVSimpleImpulseRaw
-                                , 'deleteTVSimpleImpulseRaw , 'deleteManyTVSimpleImpulseRaw
-                                , 'getTVSimpleImpulseRawSize, 'getTVSimpleImpulseRawTimeBounds ])
+$(makeAcidic ''TVSimpleRawStore [ 'insertTVSimpleRaw, 'insertManyTVSimpleRaw
+                                , 'getTVSimpleRaw    , 'getManyTVSimpleRaw
+                                , 'deleteTVSimpleRaw , 'deleteManyTVSimpleRaw
+                                , 'getTVSimpleRawSize, 'getTVSimpleRawTimeBounds ])

@@ -12,23 +12,14 @@ import           Control.Lens
 import           Data.Bifunctor
 import qualified Data.Foldable                         as F
 import qualified Data.Sequence                         as S
-import           Data.Traversable
-import           Data.Typeable
-import           Data.Wavelets.Construction
-import           Data.Wavelets.Reconstruction
-import           Data.Wavelets.Scaling
-import           GHC.Generics
 import           Plow.Extras.Lens
-import           Tach.Class.Bounds
-import qualified Tach.Class.Insertable                 as I
-import           Tach.Class.Queryable
 import           Tach.Impulse.Types.TimeValue
 import           Tach.Periodic
-import           Tach.Transformable.Types.Impulse
+import           Tach.Transformable.Types.Impulse.Core
 import           Tach.Transformable.Types.Internal
 import           Tach.Transformable.Types.Wavelet.Core
 import           Tach.Types.Classify
-import qualified Tach.Transformable.Types.Wavelet.Core as Tach.Transformable.Types.Wavelet
+import Tach.Transformable.Types.Wavelet.Core as Tach.Transformable.Types.Wavelet
 
 
 
