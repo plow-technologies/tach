@@ -35,13 +35,16 @@ data RawSeries key st en rep = RawSeries {
    ,rawSeriesRep :: rep
 } deriving (Generic, Typeable, Ord, Eq)
 
+newtype RawStart = RawStart { unRawStart :: Int } deriving (Eq, Show, Typeable)
+newtype RawEnd = RawEnd { unRawEnd :: Int } deriving (Eq, Show, Typeable)
+newtype RawKey = RawKey { unRawKey :: DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime } deriving (Eq, Typeable)
 
 newtype TVSimpleRawStore = TVSimpleRawStore {
-  unTVSimpleRawStore :: (ImpulseSeries (ImpulseKey (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime))
-                            (ImpulsePeriod (V.Vector Double) Int) (ImpulseStart Int) (ImpulseEnd Int) (ImpulseRep (S.Set TVNoKey)))
+  unTVSimpleRawStore :: RawSeries RawKey RawStart RawEnd (S.Set TVNoKey)
 } deriving (Typeable, Generic)
 
-initialTVSimpleRawStore key = TVSimpleRawStore (ImpulseSeries (ImpulseKey key) (IPeriodConst 0) (ImpulseStart 0) (ImpulseEnd 0) (ImpulseRep S.empty))
+initialTVSimpleRawStore :: DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime -> TVSimpleRawStore
+initialTVSimpleRawStore key = TVSimpleRawStore $ RawSeries (RawKey key) (RawStart 0) (RawEnd 0)  S.empty
 
 $(deriveSafeCopy 0 'base ''DK.DirectedKeyRaw)
 
@@ -58,6 +61,10 @@ $(deriveSafeCopy 0 'base ''ImpulseRep)
 $(deriveSafeCopy 0 'base ''TVSimple)
 $(deriveSafeCopy 0 'base ''ImpulsePeriod)
 $(deriveSafeCopy 0 'base ''ImpulseSeries)
+$(deriveSafeCopy 0 'base ''RawSeries)
+$(deriveSafeCopy 0 'base ''RawStart)
+$(deriveSafeCopy 0 'base ''RawEnd)
+$(deriveSafeCopy 0 'base ''RawKey)
 
 
 -- Our Safecopy instance

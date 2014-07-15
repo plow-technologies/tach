@@ -36,9 +36,9 @@ import           Tach.Impulse.Types.TimeValue
 
 
 -- | Generalized function to modify the underlying set of a tvstore
-modifyTVRawStoreWith :: (Set TVNoKey -> Set TVNoKey) -> TVKey -> Update TVSimpleRawStore (Either ErrorValue SuccessValue)
+modifyTVRawStoreWith :: (Set TVNoKey -> Set TVNoKey) -> RawKey -> Update TVSimpleRawStore (Either ErrorValue SuccessValue)
 modifyTVRawStoreWith withFunc key = do
-  st@(TVSimpleRawStore (ImpulseSeries {impulseSeriesKey = k})) <- get
+  st@(TVSimpleRawStore (RawSeries {rawSeriesKey = k})) <- get
   case st of
     _
       | k == key -> put newSt >> (return . Right. SuccessValue . LB.toStrict . encode . object $ ["setSize" .= sz])
@@ -51,17 +51,17 @@ updateTVRawStoreWith :: TVSimpleRawStore -> (Set TVNoKey -> Set TVNoKey) -> (TVS
 updateTVRawStoreWith store withFunc = (st'', sz)
   where st' = over _unTVSimpleRawStore insertTimeValue store
         sz = views _TVSimpleImpulseRep size st'
-        insertTimeValue = (over (_impulseSeriesRep . _unRep ) withFunc)
+        insertTimeValue = (over (_rawSeriesRep ) withFunc)
         st'' = (over _unTVSimpleRawStore (updateLower . updateHigher) st')
-        newSet = (view (_unTVSimpleRawStore . _impulseSeriesRep . _unRep) st')
-        updateHigher = (set (_impulseSeriesEnd . _unEnd) (tvNkSimpleTime $ findMax newSet) )
-        updateLower = (set (_impulseSeriesStart . _unStart) (tvNkSimpleTime $ findMin newSet) )
+        newSet = (view (_unTVSimpleRawStore . _rawSeriesRep ) st')
+        updateHigher = (set (_rawSeriesEnd . _unRawEnd) (tvNkSimpleTime $ findMax newSet) )
+        updateLower = (set (_rawSeriesStart . _unRawStart) (tvNkSimpleTime $ findMin newSet) )
 
 
 -- | Generalized function to read from a store
-readFromTVRawStoreWith :: TVKey -> (Set TVNoKey -> Either ErrorValue b) -> Query TVSimpleRawStore (Either ErrorValue b)
+readFromTVRawStoreWith :: RawKey -> (Set TVNoKey -> Either ErrorValue b) -> Query TVSimpleRawStore (Either ErrorValue b)
 readFromTVRawStoreWith key withFunc = queryFcn <$> ask
   where queryFcn st
           |(isKey st) = views _TVSimpleImpulseRep withFunc st
           |otherwise   = Left $ ErrorValue ErrorIncorrectKey
-        isKey (TVSimpleRawStore (ImpulseSeries {impulseSeriesKey = k})) = k == key
+        isKey (TVSimpleRawStore (RawSeries {rawSeriesKey = k})) = k == key

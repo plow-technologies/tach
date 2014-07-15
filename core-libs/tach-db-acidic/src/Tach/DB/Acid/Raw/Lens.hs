@@ -25,8 +25,11 @@ makeClassy_ ''ImpulseKey
 makeClassy_ ''ImpulseStart
 makeClassy_ ''ImpulseEnd
 makeClassy_ ''ImpulseRep
+makeClassy_ ''RawStart
+makeClassy_ ''RawEnd
+makeClassy_ ''RawSeries
 
 
 
 _TVSimpleImpulseRep :: Lens' TVSimpleRawStore (Set TVNoKey)
-_TVSimpleImpulseRep = _unTVSimpleRawStore . _impulseSeriesRep . _unRep
+_TVSimpleImpulseRep = _unTVSimpleRawStore . _rawSeriesRep

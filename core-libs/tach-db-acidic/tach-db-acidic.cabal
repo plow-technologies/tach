@@ -29,18 +29,18 @@ Library
   Other-Modules:        Tach.DB.Acid.Internal
                        ,Tach.DB.Acid.Raw.Internal
   Build-Depends:        base >= 4 && < 5
-                      , acid-state
-                      , safecopy
-                      , containers
-                      , vector
-                      , bytestring
-                      , directed-keys
+                      , acid-state >= 0.12.2.7569
+                      , safecopy >= 0.8.4.7569
+                      , containers >= 0.5.5.1
+                      , vector >= 0.10.9.1
+                      , bytestring >= 0.10.4.0
+                      , directed-keys >= 0.2.1
                       , tach-impulse-series-types >= 0.1.11
-                      , basic-prelude
-                      , cereal == 0.4.0.1
-                      , lens
-                      , mtl
-                      , aeson
+                      , basic-prelude >= 0.3.8
+                      , cereal >= 0.4.0.1
+                      , lens >= 4.2
+                      , mtl >= 2.2.1
+                      , aeson >= 0.7.0.6
                       , tach-transformable-types >= 0.1.7
 
 

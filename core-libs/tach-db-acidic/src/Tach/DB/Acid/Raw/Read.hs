@@ -32,10 +32,10 @@ import           Tach.Impulse.Types.TimeValueSeries (TVSEnd, TVSStart)
 
 
 
-getTVSimpleImpulseRaw :: TVKey -> Int -> Query TVSimpleRawStore (Either ErrorValue TVNoKey)
+getTVSimpleImpulseRaw :: RawKey -> Int -> Query TVSimpleRawStore (Either ErrorValue TVNoKey)
 getTVSimpleImpulseRaw key time = readFromTVRawStoreWith key (elookupLE (TVNoKey time 0.0))
 
-getManyTVSimpleImpulseRaw :: TVKey -> TVSStart -> TVSEnd -> Query TVSimpleRawStore (Either ErrorValue (Set TVNoKey))
+getManyTVSimpleImpulseRaw :: RawKey -> TVSStart -> TVSEnd -> Query TVSimpleRawStore (Either ErrorValue (Set TVNoKey))
 getManyTVSimpleImpulseRaw key start end
     | unStart start <= unEnd end = readFromTVRawStoreWith key (\s -> Right . trimOff $ s)
     | otherwise = return . Left $ ErrorValue ErrorInvalidRange
@@ -46,16 +46,16 @@ getManyTVSimpleImpulseRaw key start end
         trimOffLess s = snd $ S.split fakeTvNoKeyStart s
         trimOffMore s = fst $ S.split fakeTvNoKeyEnd s
 
-getTVSimpleImpulseRawSize :: TVKey -> Query TVSimpleRawStore (Either ErrorValue Int)
+getTVSimpleImpulseRawSize :: RawKey -> Query TVSimpleRawStore (Either ErrorValue Int)
 getTVSimpleImpulseRawSize key = readFromTVRawStoreWith key (\s -> Right . S.size $ s)
 
-getTVSimpleImpulseRawTimeBounds :: TVKey -> Query TVSimpleRawStore (Either ErrorValue (ImpulseStart Int, ImpulseEnd Int))
+getTVSimpleImpulseRawTimeBounds :: RawKey -> Query TVSimpleRawStore (Either ErrorValue (RawStart, RawEnd ))
 getTVSimpleImpulseRawTimeBounds tk = queryFcn <$> ask
   where
-    isKey (TVSimpleRawStore (ImpulseSeries {impulseSeriesKey = k})) = k == tk
+    isKey (TVSimpleRawStore (RawSeries {rawSeriesKey = k})) = k == tk
     queryFcn st
       | (isKey st) = let tvSet = view _unTVSimpleRawStore st
-                      in Right (impulseSeriesStart tvSet, impulseSeriesEnd tvSet)
+                      in Right (rawSeriesStart tvSet, rawSeriesEnd tvSet)
       | otherwise = (Left $ ErrorValue ErrorIncorrectKey)
 
 elookupLE :: Ord a => a -> Set a -> Either ErrorValue a
