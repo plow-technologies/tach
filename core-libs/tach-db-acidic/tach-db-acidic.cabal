@@ -43,6 +43,7 @@ Library
                       , mtl >= 2.2.1
                       , aeson >= 0.7.0.6
                       , tach-transformable-types >= 0.1.7.1
+                      , tach-db-types >= 0.1.0
 
 
 Test-Suite spec

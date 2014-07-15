@@ -9,6 +9,7 @@ import           Data.Traversable
 import           Tach.DB.Types.Internal
 import           Tach.Impulse.Types.TimeValue
 import           Tach.Transformable.Types.Impulse
+import           Tach.Transformable.Types.Impulse.Core
 import           Tach.Transformable.Types.Wavelet
 import           Tach.Transformable.Types.Wavelet.Core
 import           Tach.Types.Classify
@@ -16,7 +17,7 @@ import           Tach.Types.Classify.Lens
 import qualified Tach.DB.Types.Acid as Tach.DB.Types
 
 
-newtype TransformedStore = TransformedStore { getTransformed ::  (Classify  ImpulseTransformed (Classify (WaveletTransformed Double) ())) }
+newtype TransformedStore = TransformedStore { unTransformed ::  (Classify  ImpulseTransformed (Classify (WaveletTransformed Double) ())) }
 
 type UncappedTransform a = Classify ImpulseTransformed (Classify (WaveletTransformed Double) a)
 

@@ -13,4 +13,4 @@
 
 module Tach.DB.Acid.Transform.Types where
 
-
+import Tach.DB.Types.Acid
