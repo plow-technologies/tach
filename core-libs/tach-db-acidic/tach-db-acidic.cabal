@@ -24,6 +24,8 @@ Library
                         Tach.DB.Acid.Transform.Create
                         Tach.DB.Acid.Transform.Delete
                         Tach.DB.Acid.Transform.Read
+                        Tach.DB.Acid.Transform.Lens
+                        Tach.DB.Acid.Transform.Search
                         Tach.DB.Acid.Transform.Types
                         Tach.DB.Acid.Types
                         Tach.DB.Acid.Raw.Lens
@@ -43,7 +45,7 @@ Library
                       , mtl >= 2.2.1
                       , aeson >= 0.7.0.6
                       , tach-transformable-types >= 0.1.7.1
-                      , tach-db-types >= 0.1.1
+                      , tach-db-types >= 0.1.2
 
 
 Test-Suite spec
