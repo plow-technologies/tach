@@ -4,16 +4,16 @@
 {-# LANGUAGE FlexibleInstances         #-}
 {-# LANGUAGE MultiParamTypeClasses     #-}
 {-# LANGUAGE OverloadedStrings         #-}
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeFamilies              #-}
 
 module Tach.Transformable.Types.Impulse where
 
+import           Control.Applicative
+import qualified Data.Vector                           as V
+import           Numeric.Tools.Interpolation
+import           Statistics.Function
 import           Tach.Impulse.Types.TimeValue
-import qualified Data.Vector as V
-import Statistics.Function
-import Control.Applicative
-import Numeric.Tools.Interpolation
-import Tach.Transformable.Types.Impulse.Core as Tach.Transformable.Types.Impulse
+import           Tach.Transformable.Types.Impulse.Core as Tach.Transformable.Types.Impulse
 
 
 

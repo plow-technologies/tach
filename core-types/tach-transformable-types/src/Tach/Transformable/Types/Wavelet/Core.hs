@@ -1,9 +1,9 @@
+{-# LANGUAGE DeriveDataTypeable    #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE RankNTypes            #-}
-{-# LANGUAGE DeriveDataTypeable    #-}
 
 module Tach.Transformable.Types.Wavelet.Core where
 
@@ -24,9 +24,9 @@ import qualified Tach.Class.Insertable             as I
 import           Tach.Class.Queryable
 import           Tach.Impulse.Types.TimeValue
 import           Tach.Periodic
+import           Tach.Periodic
 import           Tach.Transformable.Types.Internal
 import           Tach.Types.Classify
-import           Tach.Periodic
 
 toTuple :: [TVNoKey] -> [(Int, Double)]
 toTuple xs = map (\(TVNoKey t v) -> (t,v)) xs

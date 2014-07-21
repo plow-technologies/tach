@@ -1,9 +1,9 @@
+{-# LANGUAGE DeriveDataTypeable    #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE RankNTypes            #-}
-{-# LANGUAGE DeriveDataTypeable    #-}
 {-# LANGUAGE TypeFamilies          #-}
 
 module Tach.Transformable.Types.Impulse.Core where
@@ -14,26 +14,26 @@ import qualified Data.Foldable                     as F
 import qualified Data.Sequence                     as S
 import           Data.Traversable
 import           Data.Typeable
+import qualified Data.Vector                       as V
+import qualified Data.Vector.Generic               as GV
+import qualified Data.Vector.Unboxed               as U
 import           Data.Wavelets.Construction
 import           Data.Wavelets.Reconstruction
 import           Data.Wavelets.Scaling
 import           GHC.Generics
+import           Numeric.Classes.Indexing
+import           Numeric.Tools.Integration
+import           Numeric.Tools.Interpolation
 import           Plow.Extras.Lens
+import           Statistics.Function
 import           Tach.Class.Bounds
 import qualified Tach.Class.Insertable             as I
 import           Tach.Class.Queryable
 import           Tach.Impulse.Types.TimeValue
 import           Tach.Periodic
+import           Tach.Periodic
 import           Tach.Transformable.Types.Internal
 import           Tach.Types.Classify
-import           Tach.Periodic
-import Numeric.Tools.Integration
-import Numeric.Tools.Interpolation
-import qualified Data.Vector as V
-import qualified Data.Vector.Unboxed as U
-import           Numeric.Classes.Indexing
-import qualified Data.Vector.Generic as GV
-import Statistics.Function
 
 
 
@@ -66,7 +66,7 @@ createMesh tf = ImpulseMesh rep mn mx
         (mn,mx) = minMax rep
 
 
--- | Get all values 
+-- | Get all values
 reconstructImpulse :: ImpulseTransformed -> V.Vector TVNoKey
 reconstructImpulse tf = GV.zipWith (\t v -> TVNoKey (round t) v) times vals
   where interp = impulseRepresentation tf
@@ -75,7 +75,7 @@ reconstructImpulse tf = GV.zipWith (\t v -> TVNoKey (round t) v) times vals
 
 
 queryImpulseSmooth :: ImpulseTransformed -> Int -> Int -> Int -> [TVNoKey]
-queryImpulseSmooth = queryLinearIterpSmooth . impulseRepresentation 
+queryImpulseSmooth = queryLinearIterpSmooth . impulseRepresentation
 
 
 -- | Query a Linear Interpolation store given a step and bounds. The result will be a list of TVNoKeys
@@ -88,7 +88,7 @@ queryLinearIterpSmooth interp step start end = (\(time, bnds) -> TVNoKey time (w
           createBounds x = (x - halfStep, x + halfStep)
 
 -- | Integrate over an entire window and then divide by the window size in order to find the
--- average of the area 
+-- average of the area
 weightedAverageWindow :: LinearInterp (ImpulseMesh Double) -> (Int, Int) -> Double
 weightedAverageWindow interp window@(start,end) = (integrateWindow interp window) / dt
   where dt = fromIntegral $ end - start
@@ -96,13 +96,13 @@ weightedAverageWindow interp window@(start,end) = (integrateWindow interp window
 
 -- | Find the integral for a series of points given a list of times to shorten the number of
 -- calculations to be a faster O(n)
--- 
+--
 integrateWindow :: LinearInterp (ImpulseMesh Double) -> (Int, Int) -> Double
 integrateWindow interp (start,end) = sumRes
   where times = V.map round $ impulseMeshRep . interpolationMesh $ interp  -- Get a list of all times from the linear interpolator
         filteredTimes = V.findIndices (\t -> t > start && t < end) times   -- Filter all times that aren't between the bounds
         times' = V.cons start (V.snoc (V.map (times !) filteredTimes) end) -- Add the start and end times to the filtered times
-        higherTimes = V.tail times'                                        
+        higherTimes = V.tail times'
         finalTimes = V.zip times' higherTimes                              -- Offset the times to make the bounds so [1,2,3,4] becomes [(1,2),(2,3),(3,4)]
         sumRes = V.sum $ V.map (calcArea interp) finalTimes                -- Add the results of the areas of each of the smaller times
 
@@ -125,7 +125,7 @@ calcArea interp (x1,x2) = ((val1 + val2) / 2) * dt
 -- | A mesh for the linear interpolation in order to keep track of times
 -- of a mesh when compared to values
 data ImpulseMesh a  = ImpulseMesh {
-  impulseMeshRep :: V.Vector a
+  impulseMeshRep   :: V.Vector a
 , impulseMeshLower :: Double
 , impulseMeshUpper :: Double
 } deriving (Show, Ord, Eq, Typeable)

@@ -18,8 +18,8 @@ import           Tach.Periodic
 import           Tach.Transformable.Types.Impulse.Core
 import           Tach.Transformable.Types.Internal
 import           Tach.Transformable.Types.Wavelet.Core
+import           Tach.Transformable.Types.Wavelet.Core as Tach.Transformable.Types.Wavelet
 import           Tach.Types.Classify
-import Tach.Transformable.Types.Wavelet.Core as Tach.Transformable.Types.Wavelet
 
 
 
