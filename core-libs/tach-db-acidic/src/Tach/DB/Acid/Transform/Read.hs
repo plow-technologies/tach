@@ -1,6 +1,14 @@
-{-# LANGUAGE CPP, DeriveDataTypeable, FlexibleContexts,OverloadedStrings,
-  GeneralizedNewtypeDeriving, MultiParamTypeClasses, NoImplicitPrelude
-  , TemplateHaskell, TypeFamilies, RecordWildCards, DeriveGeneric, DeriveDataTypeable #-}
+{-# LANGUAGE CPP                        #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE NoImplicitPrelude          #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE RecordWildCards            #-}
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TypeFamilies               #-}
 
 
 module Tach.DB.Acid.Transform.Read (
@@ -23,6 +31,7 @@ import           Tach.DB.Acid.Transform.Internal
 import           Tach.DB.Acid.Transform.Lens
 import           Tach.DB.Acid.Transform.Types
 import           Tach.DB.Acid.Types
+import           Tach.DB.Types
 import           Tach.DB.Types.Transform.Types
 import           Tach.Impulse.Types.Impulse
 import           Tach.Impulse.Types.TimeValue

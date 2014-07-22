@@ -20,6 +20,7 @@ import qualified Data.Set                      as S
 import qualified DirectedKeys.Types            as DK
 import           GHC.Generics
 import           Tach.DB.Acid.Types
+import           Tach.DB.Types
 import           Tach.DB.Types.Acid
 import           Tach.DB.Types.Transform.Types
 import           Tach.Impulse.Types.Impulse
@@ -32,7 +33,7 @@ import           Tach.Impulse.Types.TimeValue
 
 
 newtype TVSimpleTransformStore = TVSimpleTransformStore {
-  unTVSimpleTransformStore :: TransformSeries TransformKey TransformStart TransformEnd (S.Set TVNoKey)
+  unTVSimpleTransformStore :: TransformSeries TransformKey TransformStart TransformEnd (S.Set TransformedInformation)
 } deriving (Typeable, Generic)
 
 initialTVSimpleRawStore :: DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime -> TVSimpleTransformStore
@@ -48,7 +49,8 @@ $(deriveSafeCopy 0 'base ''TransformSeries)
 $(deriveSafeCopy 0 'base ''TransformStart)
 $(deriveSafeCopy 0 'base ''TransformEnd)
 $(deriveSafeCopy 0 'base ''TransformKey)
-
+$(deriveSafeCopy 0 'base ''Transformed)
+$(deriveSafeCopy 0 'base ''TransformedInformation)
 
 -- Our Safecopy instance
 $(deriveSafeCopy 0 'base ''TVSimpleTransformStore)

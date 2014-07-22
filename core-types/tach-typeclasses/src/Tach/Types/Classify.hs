@@ -19,7 +19,7 @@ import           Tach.Class.Bounds
 import           Tach.Class.Insertable
 import           Tach.Class.Queryable
 
-data Classify a b = Classified a | Unclassified b deriving (Show, Read, Generic, Eq, Ord, Typeable)
+data Classify a b = Classified a | Unclassified b deriving (Eq, Ord, Show, Read, Generic, Typeable)
 
 instance Bifunctor Classify where
   bimap f _ (Classified c) = Classified (f c)

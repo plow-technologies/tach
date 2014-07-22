@@ -12,6 +12,7 @@ module Tach.DB.Acid.Transform.Lens where
 import           BasicPrelude
 import           Control.Lens
 import           Tach.DB.Acid.Transform.Types
+import           Tach.DB.Types
 import           Tach.DB.Types.Transform.Types
 import           Tach.Impulse.Types.Impulse
 import           Tach.Impulse.Types.TimeValue
@@ -32,5 +33,5 @@ makeClassy_ ''TransformSeries
 
 
 
-_TVSimpleTransformRep :: Lens' TVSimpleTransformStore (Set TVNoKey)
-_TVSimpleTransformRep = _unTVSimpleTransformStore . _transformSeriesRep
+_tvSimpleTransformRep :: Lens' TVSimpleTransformStore (Set TransformedInformation)
+_tvSimpleTransformRep = _unTVSimpleTransformStore . _transformSeriesRep
