@@ -97,6 +97,12 @@ takePeriodic period delta toNumFunc old current =
         then ((initSeq old) S.|> (TVPeriodic . PeriodicData $ aperiodicData S.|> current))
         else (old S.|> (TVAPeriodic $ APeriodicData (S.singleton current)))
 
+-----------------------------
+-- Sequence related functions
+--
+-- Note: This functions should probably taken to another 'utility' package.
+--
+
 -- Unsafe! :(
 headSeq :: S.Seq a -> a
 headSeq = fromJust . headMaySeq
@@ -116,36 +122,38 @@ lastSeq = fromJust . lastMaySeq
 
 lastMaySeq :: S.Seq a -> Maybe a
 lastMaySeq aSeq = 
-  if len >= 1
-     then
-       Just $ S.index aSeq (len - 1)
-     else
-       Nothing
-  where len = S.length aSeq
+  case S.viewr aSeq of
+    _ S.:> x -> Just x
+    _ -> Nothing
+
+-----------------------------
 
 periodStart :: Double -> Int -> Int -> [Int]
 periodStart start count period = take count [round start + x*period | x <- [0..]]
-
 
 --classifiy :: [(Double, Double)] -> V.Vector 
 --classify xs = foldl' addPeriodic []
 
 --addPeriodic :: 
 
-linSpace :: Double -> Double -> Int -> [Double]
-linSpace start end n
-  | n-1 <= 0 = []
-  | otherwise = 
-      map (\x -> x * mult + start) (take (n - 1) [0..])
-      where mult = (end - start) / (fromIntegral l)
-            l = n-1 :: Int
+-- | Calling @linSpace start end n@ returns @fmap f [0..n-1]@, where @f x = x*k + start@,
+--   and @k = (end - start) / fromIntegral l@. Note that @f 0 = start@, @f (n-1) = end@,
+--   and @length (linSpace start end n) = n@.
+--
+linSpace :: Double -- ^ First element of the list.
+         -> Double -- ^ Last element (approximately) of the list.
+         -> Int    -- ^ Lenght of the list.
+         -> [Double] 
+linSpace start end n = take n $ iterate (+k) start
+  where
+    k = (end - start) / fromIntegral n
 
 aperiodicTimeData :: Double -> Double -> Int -> [Double]
 aperiodicTimeData start end n = [ x + sin x | x <- linSpace start end n ]
 
 randomChunks :: Double -> Double -> Double -> Double -> IO [(Double,Double)]
 randomChunks start end minStep maxStep
-  | (end - start) < minStep = return [(start,end+minStep)]
+  | end - start < minStep = return [(start,end+minStep)]
   | otherwise = do
     step <- randomRIO (minStep,maxStep)
     let newEnd = start+step
