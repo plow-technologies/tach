@@ -35,7 +35,7 @@ testList :: [Double]
 testList = aperiodicTimeData 515.0 1000.0 100
 
 seqToList :: S.Seq a -> [a]
-seqToList = (F.foldr' (\item list -> item:list) [])
+seqToList = F.foldr' (:) []
 
 combineAperiodic :: S.Seq (TVData a) -> S.Seq (TVData a)
 combineAperiodic = F.foldl' combineAperiodicFold S.empty
@@ -45,33 +45,32 @@ classifyData  period delta minPeriodicSize toNumFunc list = combineAperiodic . (
 
 
 fromFoldable :: (F.Foldable f) => f a -> S.Seq a
-fromFoldable = F.foldl (\s i -> s S.|> i) S.empty 
+fromFoldable = F.foldl (S.|>) S.empty 
 
 removePeriodicBelow :: Int -> S.Seq (TVData a) -> S.Seq (TVData a)
-removePeriodicBelow minSize list = (setAperiodicBelow minSize) <$> list
+removePeriodicBelow = (<$>) . setAperiodicBelow
 
-setAperiodicBelow :: Int -> (TVData a) -> (TVData a)
+setAperiodicBelow :: Int -> TVData a -> TVData a
 setAperiodicBelow minSize val@(TVPeriodic (PeriodicData periodic)) =
-  if ((S.length periodic) < minSize)
-    then TVAPeriodic $ APeriodicData periodic
-    else val
+  if S.length periodic < minSize
+     then TVAPeriodic $ APeriodicData periodic
+     else val
 setAperiodicBelow _ b = b
 
 -- Appends the TVData to the last element of the TVData list if both are aperiodic
 combineAperiodicFold :: S.Seq (TVData a) -> TVData a -> S.Seq (TVData a)
 combineAperiodicFold list item = 
-  let end = lastMaySeq list
-  in case end of
+  case lastMaySeq list of
     Nothing -> S.singleton item
-    (Just (TVAPeriodic (APeriodicData periodicList))) ->
+    Just (TVAPeriodic (APeriodicData periodicList)) ->
       case item of
         (TVAPeriodic (APeriodicData aSeq)) ->
           (initSeq list) S.|> (TVAPeriodic $ APeriodicData (periodicList S.>< aSeq))
         _ -> list S.|> item
-    (Just (TVPeriodic (PeriodicData _))) -> list  S.|> item
+    Just (TVPeriodic (PeriodicData _)) -> list S.|> item
 
 classifyPeriodic :: (Num a, Ord a) => a -> a -> (b -> a) -> S.Seq b -> S.Seq (TVData b)
-classifyPeriodic period delta toNumFunc list = F.foldl' (takePeriodic period delta toNumFunc) S.empty list
+classifyPeriodic period delta toNumFunc = F.foldl' (takePeriodic period delta toNumFunc) S.empty
 
 -- | The function that folds over a list and looks for any matches in a period
 takePeriodic :: (Num a, Ord a) => a -> a -> (b -> a) -> S.Seq (TVData b) -> b ->  S.Seq (TVData b)
@@ -100,41 +99,37 @@ headSeq = fromJust . headMaySeq
 
 headMaySeq :: S.Seq a -> Maybe a
 headMaySeq aSeq = 
-  if (len >= 1)
-    then
-      Just $ S.index aSeq (len - 1)
-    else
-      Nothing
+  if len >= 1
+     then
+       Just $ S.index aSeq (len - 1)
+     else
+       Nothing
   where len = S.length aSeq
 
 initSeq :: S.Seq a -> S.Seq a
 initSeq aSeq = 
-  if (len >= 1)
-    then
-      if (len == 1)
-        then
-          S.empty
-        else
-          S.take (len - 1) aSeq
-    else
-      S.empty
+  if len >= 1
+     then
+       if len == 1
+          then S.empty
+          else S.take (len - 1) aSeq
+     else S.empty
   where len = S.length aSeq
-
 
 lastSeq :: S.Seq a -> a
 lastSeq = fromJust . lastMaySeq
 
 lastMaySeq :: S.Seq a -> Maybe a
 lastMaySeq aSeq = 
-  if (len >= 1)
-    then
-      Just $ S.index aSeq (len - 1)
-    else
-      Nothing
+  if len >= 1
+     then
+       Just $ S.index aSeq (len - 1)
+     else
+       Nothing
   where len = S.length aSeq
 
 periodStart :: Double -> Int -> Int -> [Int]
-periodStart start count period = take count [(round start) + (x*period) | x <- [0..]]
+periodStart start count period = take count [round start + x*period | x <- [0..]]
 
 
 --classifiy :: [(Double, Double)] -> V.Vector 
@@ -200,8 +195,7 @@ unTVData (TVPeriodic (PeriodicData c)) = c
 unTVData (TVAPeriodic (APeriodicData b)) = b
 
 removeEmptyRandoms :: [TVData Double] -> [TVData Double]
-removeEmptyRandoms xs = F.foldl' remEmpty [] xs
-
+removeEmptyRandoms = F.foldl' remEmpty []
 
 remEmpty :: [TVData Double] -> TVData Double -> [TVData Double]
 remEmpty ys xs@(TVPeriodic (PeriodicData x)) =
