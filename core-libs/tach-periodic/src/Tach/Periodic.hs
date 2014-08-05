@@ -1,4 +1,6 @@
-{-# LANGUAGE QuasiQuotes, TemplateHaskell, TypeFamilies, RecordWildCards, OverloadedStrings, DeriveGeneric, GeneralizedNewtypeDeriving #-}
+
+{-# LANGUAGE DeriveGeneric #-}
+
 module Tach.Periodic where
 
 import Prelude hiding (foldl)
