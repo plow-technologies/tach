@@ -23,8 +23,8 @@ data PeriodicFolding a = PeriodicFolding {
 }
 
 tvDataToEither :: TVData a -> Either (S.Seq a) (PeriodicData a)
-tvDataToEither (TVPeriodic x) = Right $ x
-tvDataToEither (TVAPeriodic x) = Left . unAPeriodicData $ x
+tvDataToEither (TVPeriodic x) = Right x
+tvDataToEither (TVAPeriodic x) = Left $ unAPeriodicData x
 
 --testData :: IO [TVData Double]
 --testData = do
@@ -41,8 +41,11 @@ combineAperiodic :: S.Seq (TVData a) -> S.Seq (TVData a)
 combineAperiodic = F.foldl' combineAperiodicFold S.empty
 
 classifyData :: (Num a, Ord a, F.Foldable f) => a -> a -> Int -> (b -> a) -> f b -> S.Seq (TVData b)
-classifyData  period delta minPeriodicSize toNumFunc list = combineAperiodic . (removePeriodicBelow minPeriodicSize) $ classifyPeriodic period delta toNumFunc (fromFoldable list)
-
+classifyData period delta minPeriodicSize toNumFunc =
+    combineAperiodic
+  . removePeriodicBelow minPeriodicSize
+  . classifyPeriodic period delta toNumFunc
+  . fromFoldable
 
 fromFoldable :: (F.Foldable f) => f a -> S.Seq a
 fromFoldable = F.foldl (S.|>) S.empty 
@@ -94,28 +97,20 @@ takePeriodic period delta toNumFunc old current =
         then ((initSeq old) S.|> (TVPeriodic . PeriodicData $ aperiodicData S.|> current))
         else (old S.|> (TVAPeriodic $ APeriodicData (S.singleton current)))
 
+-- Unsafe! :(
 headSeq :: S.Seq a -> a
 headSeq = fromJust . headMaySeq
 
 headMaySeq :: S.Seq a -> Maybe a
-headMaySeq aSeq = 
-  if len >= 1
-     then
-       Just $ S.index aSeq (len - 1)
-     else
-       Nothing
-  where len = S.length aSeq
+headMaySeq aSeq =
+  case S.viewl aSeq of
+    x S.:< _ -> Just x
+    _ -> Nothing
 
 initSeq :: S.Seq a -> S.Seq a
-initSeq aSeq = 
-  if len >= 1
-     then
-       if len == 1
-          then S.empty
-          else S.take (len - 1) aSeq
-     else S.empty
-  where len = S.length aSeq
+initSeq aSeq = S.take (S.length aSeq - 1) aSeq
 
+-- Unsafe! :(
 lastSeq :: S.Seq a -> a
 lastSeq = fromJust . lastMaySeq
 
@@ -141,13 +136,12 @@ linSpace :: Double -> Double -> Int -> [Double]
 linSpace start end n
   | n-1 <= 0 = []
   | otherwise = 
-      map (\x -> (x * mult) + start) (take (n - 1) [0..])
+      map (\x -> x * mult + start) (take (n - 1) [0..])
       where mult = (end - start) / (fromIntegral l)
             l = n-1 :: Int
 
 aperiodicTimeData :: Double -> Double -> Int -> [Double]
-aperiodicTimeData start end n = [x+(sin x) | x <- (linSpace start end n)]
-
+aperiodicTimeData start end n = [ x + sin x | x <- linSpace start end n ]
 
 randomChunks :: Double -> Double -> Double -> Double -> IO [(Double,Double)]
 randomChunks start end minStep maxStep
@@ -162,12 +156,12 @@ randomChunks start end minStep maxStep
         return $ (start,newEnd):xs
 
 getRandomList :: Int -> (Int,Int) -> IO [Int]
-getRandomList size range = mapM (\_ -> randomRIO range) [1..size]
+getRandomList size = replicateM size . randomRIO
 
 randomData :: (Double,Double) -> IO (TVData Double)
 randomData (start,end) = do
   randomChoice <- randomRIO (0,10) :: IO Int
-  case randomChoice of
+  case randomChoice of -- Maybe using 'if' statement will be cleaner here.
     _
       | randomChoice <= 5 -> do --Get a period with 15 second intervals
           let xs = linSpace start end (round ((end - start)/15))
@@ -184,11 +178,10 @@ genRandomData (start,end) (minStep,maxStep) = do
   return . removeEmptyRandoms $ chunkedData
 
 removeTVData :: (Num a, Ord a) => [TVData a] -> [a]
-removeTVData list = F.foldl' removeTVDataFold [] list
+removeTVData = F.foldl' removeTVDataFold []
 
 removeTVDataFold :: (Num a, Ord a) => [a] -> TVData a -> [a]
-removeTVDataFold list item =list ++ (seqToList . unTVData $ item)
-
+removeTVDataFold list item = list ++ (seqToList . unTVData $ item)
 
 unTVData :: (Num a, Ord a) => TVData a -> S.Seq a
 unTVData (TVPeriodic (PeriodicData c)) = c
@@ -199,6 +192,6 @@ removeEmptyRandoms = F.foldl' remEmpty []
 
 remEmpty :: [TVData Double] -> TVData Double -> [TVData Double]
 remEmpty ys xs@(TVPeriodic (PeriodicData x)) =
-  if (S.null x) then ys else (ys ++ [xs])
+  if S.null x then ys else ys ++ [xs]
 remEmpty ys xs@(TVAPeriodic (APeriodicData x)) =
-  if (S.null x) then ys else (ys ++ [xs])
+  if S.null x then ys else ys ++ [xs]
