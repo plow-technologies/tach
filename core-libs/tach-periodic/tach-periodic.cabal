@@ -18,9 +18,6 @@ Library
   Build-Depends:        base >= 4 && < 5
                       , random
                       , containers
-                      , tach-impulse-series-types >= 0.1.11
-                      , safe == 0.3.4
-                      , tach-typeclasses >= 0.0.0
 
 Test-Suite spec
   Type:                 exitcode-stdio-1.0
