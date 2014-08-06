@@ -11,6 +11,7 @@ import GHC.Generics
 import Data.Maybe
 import qualified Data.Sequence as S
 import qualified Data.Foldable as F
+import Control.Monad (replicateM)
 
 newtype PeriodicData a = PeriodicData  { unPeriodicData :: S.Seq a } deriving (Eq, Show, Generic)
 newtype APeriodicData a = APeriodicData { unAPeriodicData :: S.Seq a } deriving (Eq, Show, Generic)
@@ -33,9 +34,6 @@ tvDataToEither (TVAPeriodic x) = Left $ unAPeriodicData x
 
 testList :: [Double]
 testList = aperiodicTimeData 515.0 1000.0 100
-
-seqToList :: S.Seq a -> [a]
-seqToList = F.foldr' (:) []
 
 combineAperiodic :: S.Seq (TVData a) -> S.Seq (TVData a)
 combineAperiodic = F.foldl' combineAperiodicFold S.empty
@@ -189,7 +187,7 @@ removeTVData :: (Num a, Ord a) => [TVData a] -> [a]
 removeTVData = F.foldl' removeTVDataFold []
 
 removeTVDataFold :: (Num a, Ord a) => [a] -> TVData a -> [a]
-removeTVDataFold list item = list ++ (seqToList . unTVData $ item)
+removeTVDataFold list item = list ++ (F.toList . unTVData $ item)
 
 unTVData :: (Num a, Ord a) => TVData a -> S.Seq a
 unTVData (TVPeriodic (PeriodicData c)) = c
