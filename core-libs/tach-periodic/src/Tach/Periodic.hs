@@ -38,19 +38,16 @@ testList :: [Double]
 testList = aperiodicTimeData 515.0 1000.0 100
 
 combineAperiodic :: S.Seq (TVData a) -> S.Seq (TVData a)
-combineAperiodic = F.foldl' combineAperiodicFold S.empty
+combineAperiodic = F.foldl combineAperiodicFold S.empty
 
--- Appends the TVData to the last element of the TVData list if both are aperiodic
+-- | Appends the TVData to the last element of the TVData list if both are aperiodic.
 combineAperiodicFold :: S.Seq (TVData a) -> TVData a -> S.Seq (TVData a)
-combineAperiodicFold list item = 
-  case lastMaySeq list of
-    Nothing -> S.singleton item
-    Just (TVAPeriodic (APeriodicData periodicList)) ->
-      case item of
-        (TVAPeriodic (APeriodicData aSeq)) ->
-          (initSeq list) S.|> (TVAPeriodic $ APeriodicData (periodicList S.>< aSeq))
-        _ -> list S.|> item
-    Just (TVPeriodic (PeriodicData _)) -> list S.|> item
+combineAperiodicFold list item =
+  case (S.viewr list,item) of
+    (   listInit S.:> TVAPeriodic (APeriodicData periodicList)
+      , TVAPeriodic (APeriodicData aSeq)
+        ) -> listInit S.|> TVAPeriodic (APeriodicData $ periodicList S.>< aSeq)
+    _ -> list S.|> item        
 
 classifyData :: (Num a, Ord a, F.Foldable f) => a -> a -> Int -> (b -> a) -> f b -> S.Seq (TVData b)
 classifyData period delta minPeriodicSize toNumFunc =
