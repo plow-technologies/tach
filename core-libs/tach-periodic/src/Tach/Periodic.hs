@@ -13,15 +13,17 @@ import qualified Data.Sequence as S
 import qualified Data.Foldable as F
 import Control.Monad (replicateM)
 
-newtype PeriodicData a = PeriodicData  { unPeriodicData :: S.Seq a } deriving (Eq, Show, Generic)
+newtype PeriodicData  a = PeriodicData  { unPeriodicData  :: S.Seq a } deriving (Eq, Show, Generic)
+
 newtype APeriodicData a = APeriodicData { unAPeriodicData :: S.Seq a } deriving (Eq, Show, Generic)
+
 data TVData a = TVPeriodic (PeriodicData a) | TVAPeriodic (APeriodicData a) deriving (Eq, Show, Generic)
 
 data PeriodicFolding a = PeriodicFolding {
-  firstPeriodic :: Int
- ,periodicCount :: Int
- ,timeValueData :: [TVData a]
-}
+   firstPeriodic :: Int
+ , periodicCount :: Int
+ , timeValueData :: [TVData a]
+   }
 
 tvDataToEither :: TVData a -> Either (S.Seq a) (PeriodicData a)
 tvDataToEither (TVPeriodic x) = Right x
