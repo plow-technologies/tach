@@ -1,41 +1,23 @@
 {-# LANGUAGE DeriveDataTypeable    #-}
-{-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE TypeFamilies          #-}
 
 module Tach.Transformable.Types.Impulse.Core where
 
 import           Control.Applicative
-import           Data.Bifunctor
-import qualified Data.Foldable                     as F
-import qualified Data.Sequence                     as S
-import           Data.Traversable
+import           Control.Arrow ((&&&))
 import           Data.Typeable
 import qualified Data.Vector                       as V
 import qualified Data.Vector.Generic               as GV
 import qualified Data.Vector.Unboxed               as U
-import           Data.Wavelets.Construction
-import           Data.Wavelets.Reconstruction
-import           Data.Wavelets.Scaling
-import           GHC.Generics
 import           Numeric.Classes.Indexing
-import           Numeric.Tools.Integration
 import           Numeric.Tools.Interpolation
-import           Plow.Extras.Lens
 import           Statistics.Function
 import           Tach.Class.Bounds
 import qualified Tach.Class.Insertable             as I
 import           Tach.Class.Queryable
 import           Tach.Impulse.Types.TimeValue
-import           Tach.Periodic
-import           Tach.Periodic
-import           Tach.Transformable.Types.Internal
-import           Tach.Types.Classify
-
-
 
 data ImpulseTransformed = ImpulseTransformed {
     impulseRepresentation :: LinearInterp (ImpulseMesh Double)
@@ -43,12 +25,8 @@ data ImpulseTransformed = ImpulseTransformed {
   , impulseEnd            :: Int
 } deriving (Show, Ord, Eq, Typeable)
 
-
-impulseBounds :: ImpulseTransformed -> (Int, Int)
-impulseBounds impls = (impulseStart impls, impulseEnd impls)
-
 instance Bound (ImpulseTransformed) where
-  bounds = impulseBounds
+  bounds = impulseStart &&& impulseEnd
 
 instance Queryable (ImpulseTransformed) TVNoKey where
   query step start end impls = I.toInsertable $ queryImpulse impls step start end
@@ -73,10 +51,8 @@ reconstructImpulse tf = GV.zipWith (\t v -> TVNoKey (round t) v) times vals
         times = impulseMeshRep . interpolationMesh $ interp
         vals = GV.fromList . GV.toList . interpolationTable $ interp
 
-
 queryImpulseSmooth :: ImpulseTransformed -> Int -> Int -> Int -> [TVNoKey]
 queryImpulseSmooth = queryLinearIterpSmooth . impulseRepresentation
-
 
 -- | Query a Linear Interpolation store given a step and bounds. The result will be a list of TVNoKeys
 -- with a length of ((end - start) / step) and a value of the average value surrounding the key from t + (step/2) and t - (step/2)
@@ -92,7 +68,6 @@ queryLinearIterpSmooth interp step start end = (\(time, bnds) -> TVNoKey time (w
 weightedAverageWindow :: LinearInterp (ImpulseMesh Double) -> (Int, Int) -> Double
 weightedAverageWindow interp window@(start,end) = (integrateWindow interp window) / dt
   where dt = fromIntegral $ end - start
-
 
 -- | Find the integral for a series of points given a list of times to shorten the number of
 -- calculations to be a faster O(n)
@@ -112,7 +87,6 @@ integrateWindow interp (start,end) = sumRes
 trimWindowToBounds :: (Int,Int) -> (Int, Int) -> (Int, Int)
 trimWindowToBounds (totalStart, totalEnd) (windowStart, windowEnd) = (max totalStart windowStart, min totalEnd windowEnd)
 
-
 -- | Calculate the area of a linear interpreted graph given a start and end
 -- Used for the start and end of a window or the internal portion of a window
 calcArea :: LinearInterp (ImpulseMesh Double) -> (Int, Int) -> Double
@@ -120,7 +94,6 @@ calcArea interp (x1,x2) = ((val1 + val2) / 2) * dt
  where dt = fromIntegral $ x2 - x1
        val1 = (at interp $ fromIntegral x1)
        val2 = (at interp $ fromIntegral x2)
-
 
 -- | A mesh for the linear interpolation in order to keep track of times
 -- of a mesh when compared to values
@@ -134,8 +107,7 @@ data ImpulseMesh a  = ImpulseMesh {
 findIndex :: ImpulseMesh Double -> Double -> Int
 findIndex mesh x = V.maximum . V.findIndices (\a -> a <= x) $ impulseMeshRep mesh
 
-
-instance (U.Unbox a) => Indexable (ImpulseMesh a) where
+instance U.Unbox a => Indexable (ImpulseMesh a) where
   type IndexVal (ImpulseMesh a) = a
   size = size . impulseMeshRep
   unsafeIndex = unsafeIndex . impulseMeshRep
@@ -145,7 +117,6 @@ instance Mesh (ImpulseMesh Double) where
   meshUpperBound = impulseMeshUpper
   meshFindIndex = findIndex
 
-
 queryImpulse :: ImpulseTransformed -> Int -> Int -> Int -> V.Vector TVNoKey
-queryImpulse tf step start end = trim . reconstructImpulse $ tf
+queryImpulse tf _ start end = trim . reconstructImpulse $ tf
   where trim = V.filter (\t -> tvNkSimpleTime t >= start && tvNkSimpleTime t <= end)

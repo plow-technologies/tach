@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings , DeriveGeneric #-}
 
-module Tach.Transformable.Types.Transform where 
-
-import GHC.Generics
+-- | I guess we should just remove this module.
+module Tach.Transformable.Types.Transform where

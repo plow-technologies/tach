@@ -1,9 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable    #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE RankNTypes            #-}
 
 module Tach.Transformable.Types.Wavelet where
 
@@ -18,14 +12,10 @@ import           Tach.Periodic
 import           Tach.Transformable.Types.Impulse.Core
 import           Tach.Transformable.Types.Internal
 import           Tach.Transformable.Types.Wavelet.Core
-import           Tach.Transformable.Types.Wavelet.Core as Tach.Transformable.Types.Wavelet
 import           Tach.Types.Classify
 
-
-
-
 -- Attempt to transform a a list of TVs into a wavelet. It might break the list into multiple portions to classify different parts
-tfWavelet :: (F.Foldable f) => f TVNoKey -> S.Seq (Classify (WaveletTransformed Double) [TVNoKey])
+tfWavelet :: F.Foldable f => f TVNoKey -> S.Seq (Classify (WaveletTransformed Double) [TVNoKey])
 tfWavelet tvnklist =
   let classified = tvDataToEither <$> classifyData 15 1 200 tvNkSimpleTime tvnklist
       transformed = fmap (transformClassified 15) <$> classified
