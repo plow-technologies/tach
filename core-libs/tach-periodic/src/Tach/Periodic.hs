@@ -67,9 +67,9 @@ setAperiodicBelow minSize val@(TVPeriodic (PeriodicData periodic)) =
 setAperiodicBelow _ b = b
 
 classifyPeriodic :: (Num a, Ord a) => a -> a -> (b -> a) -> S.Seq b -> S.Seq (TVData b)
-classifyPeriodic period delta toNumFunc = F.foldl' (takePeriodic period delta toNumFunc) S.empty
+classifyPeriodic period delta toNumFunc = F.foldl (takePeriodic period delta toNumFunc) S.empty
 
-fromFoldable :: (F.Foldable f) => f a -> S.Seq a
+fromFoldable :: F.Foldable f => f a -> S.Seq a
 fromFoldable = F.foldl (S.|>) S.empty 
 
 -- | The function that folds over a list and looks for any matches in a period
@@ -97,7 +97,7 @@ takePeriodic period delta toNumFunc old current =
 -----------------------------
 -- Sequence related functions
 --
--- Note: This functions should probably taken to another 'utility' package.
+-- Note: This functions should probably be moved to another 'utility' package.
 --
 
 -- Unsafe! :(
@@ -143,7 +143,7 @@ linSpace :: Double -- ^ First element of the list.
          -> [Double] 
 linSpace start end n = take n $ iterate (+k) start
   where
-    k = (end - start) / fromIntegral n
+    k = (end - start) / fromIntegral (n-1)
 
 aperiodicTimeData :: Double -> Double -> Int -> [Double]
 aperiodicTimeData start end n = [ x + sin x | x <- linSpace start end n ]
