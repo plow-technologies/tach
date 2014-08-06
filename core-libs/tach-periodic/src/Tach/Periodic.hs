@@ -150,6 +150,10 @@ aperiodicTimeData start end n = [ x + sin x | x <- linSpace start end n ]
 
 randomChunks :: Double -> Double -> Double -> Double -> IO [(Double,Double)]
 randomChunks start end minStep maxStep
+    -- Why this instead of [], or [(start,end)]. What's the rationale behind
+    -- this design choice? I could understand it if we were giving importance
+    -- to keep the property that size of each chunk is at least 'minStep',
+    -- but this property is broken later.
   | end - start < minStep = return [(start,end+minStep)]
   | otherwise = do
     step <- randomRIO (minStep,maxStep)
