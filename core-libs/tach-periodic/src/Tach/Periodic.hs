@@ -153,7 +153,7 @@ randomChunks start end minStep maxStep
     -- Why this instead of [], or [(start,end)]. What's the rationale behind
     -- this design choice? I could understand it if we were giving importance
     -- to keep the property that size of each chunk is at least 'minStep',
-    -- but this property is broken later.
+    -- but this property is broken later. (Daniel)
   | end - start < minStep = return [(start,end+minStep)]
   | otherwise = do
     step <- randomRIO (minStep,maxStep)
@@ -161,6 +161,7 @@ randomChunks start end minStep maxStep
     case newEnd > end of
       True -> return [(start,end)]
       False -> do
+        -- Why this (+16) ?? (Daniel)
         xs <- randomChunks (newEnd + 16) end minStep maxStep
         return $ (start,newEnd):xs
 
