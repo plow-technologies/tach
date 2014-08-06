@@ -38,26 +38,6 @@ testList = aperiodicTimeData 515.0 1000.0 100
 combineAperiodic :: S.Seq (TVData a) -> S.Seq (TVData a)
 combineAperiodic = F.foldl' combineAperiodicFold S.empty
 
-classifyData :: (Num a, Ord a, F.Foldable f) => a -> a -> Int -> (b -> a) -> f b -> S.Seq (TVData b)
-classifyData period delta minPeriodicSize toNumFunc =
-    combineAperiodic
-  . removePeriodicBelow minPeriodicSize
-  . classifyPeriodic period delta toNumFunc
-  . fromFoldable
-
-fromFoldable :: (F.Foldable f) => f a -> S.Seq a
-fromFoldable = F.foldl (S.|>) S.empty 
-
-removePeriodicBelow :: Int -> S.Seq (TVData a) -> S.Seq (TVData a)
-removePeriodicBelow = (<$>) . setAperiodicBelow
-
-setAperiodicBelow :: Int -> TVData a -> TVData a
-setAperiodicBelow minSize val@(TVPeriodic (PeriodicData periodic)) =
-  if S.length periodic < minSize
-     then TVAPeriodic $ APeriodicData periodic
-     else val
-setAperiodicBelow _ b = b
-
 -- Appends the TVData to the last element of the TVData list if both are aperiodic
 combineAperiodicFold :: S.Seq (TVData a) -> TVData a -> S.Seq (TVData a)
 combineAperiodicFold list item = 
@@ -70,8 +50,28 @@ combineAperiodicFold list item =
         _ -> list S.|> item
     Just (TVPeriodic (PeriodicData _)) -> list S.|> item
 
+classifyData :: (Num a, Ord a, F.Foldable f) => a -> a -> Int -> (b -> a) -> f b -> S.Seq (TVData b)
+classifyData period delta minPeriodicSize toNumFunc =
+    combineAperiodic
+  . removePeriodicBelow minPeriodicSize
+  . classifyPeriodic period delta toNumFunc
+  . fromFoldable
+
+removePeriodicBelow :: Int -> S.Seq (TVData a) -> S.Seq (TVData a)
+removePeriodicBelow = (<$>) . setAperiodicBelow
+
+setAperiodicBelow :: Int -> TVData a -> TVData a
+setAperiodicBelow minSize val@(TVPeriodic (PeriodicData periodic)) =
+  if S.length periodic < minSize
+     then TVAPeriodic $ APeriodicData periodic
+     else val
+setAperiodicBelow _ b = b
+
 classifyPeriodic :: (Num a, Ord a) => a -> a -> (b -> a) -> S.Seq b -> S.Seq (TVData b)
 classifyPeriodic period delta toNumFunc = F.foldl' (takePeriodic period delta toNumFunc) S.empty
+
+fromFoldable :: (F.Foldable f) => f a -> S.Seq a
+fromFoldable = F.foldl (S.|>) S.empty 
 
 -- | The function that folds over a list and looks for any matches in a period
 takePeriodic :: (Num a, Ord a) => a -> a -> (b -> a) -> S.Seq (TVData b) -> b ->  S.Seq (TVData b)
