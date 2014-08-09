@@ -33,7 +33,7 @@ The project is broken into several different classes of package
 * tach-migration-routes: The migration portion of tach used to upload all data to s3.
 * tach-migration-types: `MigrationTransport` type and `IncomingKey` synonym.
 * tach-transformable-types: `WaveletTransform` type, isomorphic to `[[a]]`. Impulse and Wavelet
-                            types and functionsfunctions.
+                            types and functions.
 * tach-typeclasses: Some type classes.
   + `Insertable` abstracts the idea of data structure that
     can contain zero or more elements (not that you can extract them).
