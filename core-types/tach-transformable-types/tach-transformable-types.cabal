@@ -33,9 +33,6 @@ Library
                       , numeric-tools >= 0.2.0.1.7569
                       , vector
                       , statistics
-                      , integration
-                      , parallel
-
 
 Test-Suite spec
   Type:                 exitcode-stdio-1.0
