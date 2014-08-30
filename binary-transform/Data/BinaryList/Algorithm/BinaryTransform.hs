@@ -32,6 +32,8 @@ import qualified Data.BinaryList as BL
 --   * A function @f :: a -> b@ is /surjective/ if for every @y :: b@ there is
 --     @x :: a@ such that @f(x) = y@.
 --
+--   To apply a bijection @f@ to an argument @x@ use @direct f x@. To apply its
+--   inverse just do @inverse f x@.
 data Bijection a b =
   Bijection { direct  :: a -> b -- ^ Bijection.
             , inverse :: b -> a -- ^ Inverse of the bijection.
@@ -39,6 +41,7 @@ data Bijection a b =
 
 {-# INLINE inverseBijection #-}
 
+-- | The inverse of a bijection.
 inverseBijection :: Bijection a b -> Bijection b a
 inverseBijection (Bijection f f') = Bijection f' f
 
@@ -65,9 +68,9 @@ leftBinaryTransform (Bijection f f') = Bijection transform itransform
          Right (l,r) -> BL.joinPairs $ fmap f' $ BL.zip (itransform l) r
 
 leftPartialInverse :: Bijection (BinList a) (BinList a) -> Int -> BinList a -> BinList a
-leftPartialInverse (Bijection _ itransform) = go
+leftPartialInverse t = go
   where
-    go 0 xs = itransform xs
+    go 0 xs = inverse t xs
     go n xs =
       case BL.split xs of
         Right (l,_) -> go (n-1) l
@@ -75,6 +78,9 @@ leftPartialInverse (Bijection _ itransform) = go
 
 -- Right Binary Transform
 
+-- | The /right binary transform/ lifts a permutation (i.e. a bijection from
+--   a set to itself) of a plane to a permutation of binary lists. The transformation
+--   condenses at the right.
 rightBinaryTransform :: Bijection (a,a) (a,a) -> Bijection (BinList a) (BinList a)
 rightBinaryTransform (Bijection f g) = Bijection transform itransform
    where
@@ -89,9 +95,9 @@ rightBinaryTransform (Bijection f g) = Bijection transform itransform
          Right (l,r) -> BL.joinPairs $ fmap g $ BL.zip l (itransform r)
 
 rightPartialInverse :: Bijection (BinList a) (BinList a) -> Int -> BinList a -> BinList a
-rightPartialInverse (Bijection _ itransform) = go
+rightPartialInverse t = go
   where
-    go 0 xs = itransform xs
+    go 0 xs = inverse t xs
     go n xs =
       case BL.split xs of
         Right (_,r) -> go (n-1) r
