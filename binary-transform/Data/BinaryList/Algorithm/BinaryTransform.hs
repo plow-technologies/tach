@@ -1,6 +1,6 @@
 
 -- | Implementation of the binary transform, as detailed in
---   <>.
+--   <https://github.com/plow-technologies/writings/tree/master/binary-transform>.
 module Data.BinaryList.Algorithm.BinaryTransform (
     -- * Bijections
     Bijection (..)
@@ -10,8 +10,8 @@ module Data.BinaryList.Algorithm.BinaryTransform (
   , leftBinaryTransform
   , leftPartialInverse
     -- ** Right version
-  -- , rightBinaryTransform
-  -- , rightPartialInverse
+  , rightBinaryTransform
+  , rightPartialInverse
   ) where
 
 import Prelude hiding (id,(.))
@@ -48,6 +48,9 @@ instance Category Bijection where
 
 -- Left Binary Transform
 
+-- | The /left binary transform/ lifts a permutation (i.e. a bijection from
+--   a set to itself) of a plane to a permutation of binary lists. The transformation
+--   condenses at the left.
 leftBinaryTransform :: Bijection (a,a) (a,a) -> Bijection (BinList a) (BinList a)
 leftBinaryTransform (Bijection f f') = Bijection transform itransform
    where
@@ -72,8 +75,6 @@ leftPartialInverse (Bijection _ itransform) = go
 
 -- Right Binary Transform
 
-{-
-
 rightBinaryTransform :: Bijection (a,a) (a,a) -> Bijection (BinList a) (BinList a)
 rightBinaryTransform (Bijection f g) = Bijection transform itransform
    where
@@ -81,11 +82,11 @@ rightBinaryTransform (Bijection f g) = Bijection transform itransform
        case BL.disjoinPairs xs of
          Nothing -> xs
          Just ps -> let (l,r) = BL.unzip $ fmap f ps
-                    in  fromJust $ BL.append (transform l) r
+                    in  fromJust $ BL.append l (transform r)
      itransform xs =
        case BL.split xs of
          Left _ -> xs
-         Right (l,r) -> BL.joinPairs $ fmap g $ BL.zip (itransform l) r
+         Right (l,r) -> BL.joinPairs $ fmap g $ BL.zip l (itransform r)
 
 rightPartialInverse :: Bijection (BinList a) (BinList a) -> Int -> BinList a -> BinList a
 rightPartialInverse (Bijection _ itransform) = go
@@ -95,5 +96,3 @@ rightPartialInverse (Bijection _ itransform) = go
       case BL.split xs of
         Right (_,r) -> go (n-1) r
         _ -> xs
-
--}
