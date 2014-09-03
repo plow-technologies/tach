@@ -20,39 +20,37 @@ Library
   Other-Modules:        Tach.Migration.Routes.Internal
                         Tach.Migration.Foundation
   Build-Depends:        base >= 4 && < 5
-                      , yesod == 1.2.5.2
+                      , yesod >= 1.2.5.2
                       , tach-impulse-series-types >= 0.1.11
-                      , tach-acid-impulse-lib == 0.2.4
-                      , yesod-core == 1.2.15.1
-                      , aeson == 0.7.0.6
+                      , tach-acid-impulse-lib
+                      , yesod-core >= 1.2.15.1
+                      , aeson
                       , text       >= 0.11.3.1
                       , bytestring >= 0.10.0.2
-                      , http-types == 0.8.4
-                      , acid-state == 0.12.2.1
-                      , tach-migration-acidic == 0.2.3
-                      , containers == 0.5.5.1
+                      , http-types
+                      , acid-state >= 0.12.2.1
+                      , tach-migration-acidic
+                      , containers
                       , vector
-                      , directed-keys == 0.2.1
-                      , cereal == 0.4.0.1
-                      , stm == 2.4.3
-                      , filesystem-trees 
+                      , directed-keys >= 0.2.1
+                      , cereal >= 0.4.0.1
+                      , stm >= 2.4.3
+                      -- , filesystem-trees 
                       , utf8-string >= 0.3.7
-                      , s3-simple == 0.2.0
+                      , s3-simple >= 0.2.0
                       , tach-periodic >= 0.1.7
-                      , wavelets == 0.1.7
-                      , zlib == 0.5.4.1
-                      , tach-transformable-types >= 0.1.6
+                      , zlib >= 0.5.4.1
+                      , tach-transformable-types
                       , yaml
-                      , tach-migration-types == 0.2.1
-                      , acid-cell == 0.1.12.3
+                      , tach-migration-types
+                      , acid-cell
                       , safecopy
-                      , system-fileio == 0.3.14
-                      , system-filepath == 0.4.12
-                      , async == 2.0.1.5
-                      , lifted-async == 0.2.0
-                      , transformers == 0.3.0.0
+                      , system-fileio >= 0.3.14
+                      , system-filepath >= 0.4.12
+                      , async >= 2.0.1.5
+                      , lifted-async >= 0.2.0
+                      , transformers >= 0.3.0.0
 
-                      -- == 0.1.0.5
 Test-Suite spec
   Type:                 exitcode-stdio-1.0
   Default-Language:     Haskell2010
@@ -95,11 +93,10 @@ executable         migration-app
                       , directed-keys
                       , cereal
                       , stm
-                      , filesystem-trees
+                      -- , filesystem-trees
                       , utf8-string
                       , s3-simple
                       , tach-periodic
-                      , wavelets
                       , zlib
                       , tach-transformable-types
                       , yaml

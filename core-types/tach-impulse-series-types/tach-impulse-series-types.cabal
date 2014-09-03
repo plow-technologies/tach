@@ -22,10 +22,10 @@ Library
                         Tach.Impulse.Types.TimeValue
   Other-Modules:        Tach.Impulse.Types.Internal
   Build-Depends:        base >= 4 && < 5
-                      , binary == 0.7.1.0
-                      , vector == 0.10.9.1
+                      , binary >= 0.7.1.0
+                      , vector >= 0.10.9
                       , containers >=  0.5.0.0
-                      , directed-keys == 0.2.1
+                      , directed-keys >= 0.2.1
                       , cereal >= 0.4.0.1
                       , bytestring >= 0.10.4.0
 
@@ -39,7 +39,7 @@ Test-Suite spec
   Main-Is:              Spec.hs
   Build-Depends:        base
                       , hspec
-                      , QuickCheck == 2.6
+                      , QuickCheck
                       , tach-impulse-series-types
                       , vector
                       , containers

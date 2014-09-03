@@ -7,9 +7,7 @@ module Tach.Impulse.Types.TimeValue where
 import GHC.Generics
 import Data.Typeable
 import Tach.Impulse.Types.Impulse 
-import Data.Typeable (Typeable)
 import Data.Vector
-import qualified DirectedKeys as DK
 import qualified DirectedKeys.Types as DK
 import qualified Data.Serialize as S
 import qualified Data.ByteString as BS
