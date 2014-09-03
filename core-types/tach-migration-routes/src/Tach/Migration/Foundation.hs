@@ -29,6 +29,7 @@ import qualified Data.Serialize as S
 --Wavelets and Compression
 import Data.Wavelets.Construction
 import Tach.Migration.Types
+import Tach.Impulse.Types.TimeValue
 
 import Data.Acid.Cell
 import Tach.Acid.Impulse.Cruds
@@ -58,7 +59,7 @@ fullDecode :: Text -> Either Text (DK.DirectedKeyRaw KeyPid KeySource KeyDestina
 fullDecode = decodeDirectedKeyRaw
 
 encodeDirectedKeyRaw :: (Serialize key, Serialize source, Serialize destination, Serialize datetime) => DK.DirectedKeyRaw key source destination datetime -> Text           
-encodeDirectedKeyRaw akey = TE.decodeUtf8 $ DK.encodeKey $ akey
+encodeDirectedKeyRaw = TE.decodeUtf8 . DK.encodeKey
 
 decodeDirectedKeyRaw :: Text -> Either Text (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime)
 decodeDirectedKeyRaw akey =  case (DK.decodeKey $ TE.encodeUtf8 $ akey) of
@@ -93,8 +94,8 @@ archiveAndHandleTVSimpleImpulseTypeStoreAC :: AcidCell
                                                       (AcidState st1))
 createCheckpointAndCloseTVSimpleImpulseTypeStoreAC :: (SafeCopy st1,
                                                        Data.Typeable.Typeable st1) =>
-                                                      AcidCell t1 t2 t3 t4 st (AcidState st1)
-                                                      -> IO ()
+                                                      AcidCell t1 t2 t3 t4 st (AcidState st1) -> IO ()
+
 traverseWithKeyTVSimpleImpulseTypeStoreAC :: AcidCell t t1 t2 t3 t4 t5
                                              -> (CellKey
                                                    KeyPid
@@ -106,6 +107,7 @@ traverseWithKeyTVSimpleImpulseTypeStoreAC :: AcidCell t t1 t2 t3 t4 t5
                                                  -> AcidState t4
                                                  -> IO b)
                                              -> IO (M.Map (DK.DirectedKeyRaw t t1 t2 t3) b)
+
 foldlWithKeyTVSimpleImpulseTypeStoreAC :: AcidCell t t1 t2 t3 t4 t5
                                           -> (CellKey
                                                 KeyPid
@@ -121,7 +123,6 @@ foldlWithKeyTVSimpleImpulseTypeStoreAC :: AcidCell t t1 t2 t3 t4 t5
                                           -> IO b
 getTVSimpleImpulseTypeStoreAC :: AcidCell KeyPid KeySource KeyDestination KeyTime t t1
                                  -> TVSimpleImpulseTypeStore -> IO (Maybe (AcidState t))
-
 deleteTVSimpleImpulseTypeStoreAC :: AcidCell
                                       KeyPid
                                       KeySource
@@ -130,7 +131,6 @@ deleteTVSimpleImpulseTypeStoreAC :: AcidCell
                                       t
                                       (AcidState (EventState DeleteAcidCellPathFileKey))
                                     -> TVSimpleImpulseTypeStore -> IO ()
-
 insertTVSimpleImpulseTypeStoreAC :: AcidCell
                                       KeyPid
                                       KeySource
@@ -149,6 +149,7 @@ initializeTVSimpleImpulseTypeStoreAC :: Text
                                                 KeyTime
                                                 TVSimpleImpulseTypeStore
                                                 (AcidState CellKeyStore))
-
 updateTVSimpleImpulseTypeStoreAC :: AcidCell KeyPid KeySource KeyDestination KeyTime t5 t6
                                           -> AcidState t5 -> TVSimpleImpulseTypeStore -> IO ()
+
+traverseWithKeyTVSimpleImpulseTypeStoreAC = undefined

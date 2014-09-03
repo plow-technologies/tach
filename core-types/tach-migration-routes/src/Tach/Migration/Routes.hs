@@ -1,4 +1,6 @@
-{-# LANGUAGE QuasiQuotes, TemplateHaskell, TypeFamilies, RecordWildCards, OverloadedStrings, DeriveGeneric, GeneralizedNewtypeDeriving, DeriveDataTypeable #-}
+
+{-# LANGUAGE QuasiQuotes, TemplateHaskell, RecordWildCards, DeriveGeneric, OverloadedStrings #-}
+
 module Tach.Migration.Routes where
 
 --General Haskell imports
@@ -509,9 +511,8 @@ attemptLookupInsert cell key tmMap = do
 
 
 
-classifySet :: Int -> Int -> Int -> S.Set TVNoKey -> [TVData TVNoKey]
+classifySet :: Int -> Int -> Int -> S.Set TVNoKey -> SEQ.Seq (TVData TVNoKey)
 classifySet period delta minPeriodicSize set = classifyData period delta minPeriodicSize tvNkSimpleTime $ S.toList set
-
 
 periodicToTransform ::  (PeriodicData TVNoKey) -> (WaveletTransform Double)
 periodicToTransform (PeriodicData periodic) = 

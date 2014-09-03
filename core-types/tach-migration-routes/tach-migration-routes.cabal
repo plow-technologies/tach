@@ -14,7 +14,8 @@ Library
   Default-Language:     Haskell2010
   HS-Source-Dirs:       src
   GHC-Options:          -Wall
-  Exposed-Modules:      Tach.Migration.Routes
+  Exposed-Modules:
+                        Tach.Migration.Routes
                       , Tach.Migration.Instances
                       , Tach.Migration.Routes.Types
   Other-Modules:        Tach.Migration.Routes.Internal
@@ -35,7 +36,6 @@ Library
                       , directed-keys >= 0.2.1
                       , cereal >= 0.4.0.1
                       , stm >= 2.4.3
-                      -- , filesystem-trees 
                       , utf8-string >= 0.3.7
                       , s3-simple >= 0.2.0
                       , tach-periodic >= 0.1.7
@@ -50,6 +50,7 @@ Library
                       , async >= 2.0.1.5
                       , lifted-async >= 0.2.0
                       , transformers >= 0.3.0.0
+                      , wavelets
 
 Test-Suite spec
   Type:                 exitcode-stdio-1.0
@@ -93,7 +94,6 @@ executable         migration-app
                       , directed-keys
                       , cereal
                       , stm
-                      -- , filesystem-trees
                       , utf8-string
                       , s3-simple
                       , tach-periodic
@@ -112,6 +112,7 @@ executable         migration-app
                       , async
                       , lifted-async
                       , transformers
+                      , wavelets
     ghc-options:       -threaded -O2 -rtsopts -Wall 
 Source-Repository head
   Type:                 git
