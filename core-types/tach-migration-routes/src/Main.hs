@@ -40,6 +40,7 @@ import Data.Streaming.Network.Internal
 import qualified Filesystem as FS
 import qualified Filesystem.Path as FP
 
+import Tach.Impulse.Types.TimeValue
 
 data MigrationPath = MigrationPath{ 
    migrationPath :: String
