@@ -114,6 +114,7 @@ executable         migration-app
                       , transformers
                       , wavelets
     ghc-options:       -threaded -O2 -rtsopts -Wall 
+
 Source-Repository head
   Type:                 git
   Location:             git@github.com:plow-technologies/tach.git
