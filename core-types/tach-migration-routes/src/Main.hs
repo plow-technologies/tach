@@ -38,23 +38,21 @@ data MigrationPath = MigrationPath{
 --s3Conn :: S3Connection
 --s3Conn = S3Connection defaultS3Host "AKIAI5PX6WURXC7EAEWA" "n+l3EqtsdVwPidtOZ++l/CdK/cJzrAmTih+O9JFi"
 
-
 main :: IO ()
 main = do
   args <- cmdArgs $ MigrationPath "config.yml"
   let fullPath = OS.fromText $ T.pack $ migrationPath args
   print args
   file <- FS.readFile fullPath
-  let eConf = Y.decodeEither file
-  case eConf of
+  case Y.decodeEither file of
     Left _ -> putStrLn "Error reading config file"
     Right theConf -> do
       migrationConfig <- readMigrationConfig fullPath
       let runServer conf migrationConf = do
             let -- dKey = buildIncomingKey (KeyPid 300) (KeySource "www.aacs-us.com") (KeyDestination "http://cloud.aacs-us.com") (KeyTime 0)
                 -- impulseStateMap = flip M.singleton
-            cells <- initializeTVSimpleImpulseTypeStoreAC (migrationStatePath migrationConf)
-            resMap <- foldlWithKeyTVSimpleImpulseTypeStoreAC cells (\_ key _ ioStates -> M.insert key Idle <$> ioStates) (return M.empty)
+            cells <- initializeTVSimpleImpulseTypeStoreAC $ migrationStatePath migrationConf
+            resMap <- foldlWithKeyTVSimpleImpulseTypeStoreAC cells (\_ key _ ioStates -> M.insert key Idle <$> ioStates) $ return M.empty
             sMap <- newTMVarIO resMap
             wait <- newEmptyMVar
             gcState <- newTVarIO GCIdle
@@ -73,12 +71,10 @@ notWarpWarp config app wait = do
   finally (do putStrLn $ "Starting migration server"
               wapp <- toWaiApp app
               _ <- startServer wapp config 
-              res <- takeMVar wait
-              _ <- putMVar wait res
-              return ()
+              takeMVar wait >>= putMVar wait
            )
           (void $ do
-              putStrLn ("Closing migration server" :: String)
+              putStrLn $ "Closing migration server"
               let cells = migrationRoutesAcidCell app
               void $ do
                 _ <- archiveAndHandleTVSimpleImpulseTypeStoreAC cells (\_ b -> createCheckpoint b >> return b)

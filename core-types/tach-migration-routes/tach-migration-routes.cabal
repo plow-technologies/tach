@@ -13,7 +13,7 @@ extra-source-files:     src/migration-routes
 Library
   Default-Language:     Haskell2010
   HS-Source-Dirs:       src
-  GHC-Options:          -Wall
+  GHC-Options:          -Wall -fno-warn-orphans
   Exposed-Modules:
                         Tach.Migration.Routes
                       , Tach.Migration.Instances
@@ -113,7 +113,7 @@ executable         migration-app
                       , lifted-async
                       , transformers
                       , wavelets
-    ghc-options:       -threaded -O2 -rtsopts -Wall 
+    ghc-options:       -threaded -O2 -rtsopts -Wall -fno-warn-orphans
 
 Source-Repository head
   Type:                 git
