@@ -495,11 +495,11 @@ attemptLookupInsert cell key tmMap = do
       return st
 
 classifySet :: Int -> Int -> Int -> S.Set TVNoKey -> SEQ.Seq (TVData TVNoKey)
-classifySet period delta minPeriodicSize set = classifyData period delta minPeriodicSize tvNkSimpleTime $ S.toList set
+classifySet period delta minPeriodicSize = classifyData period delta minPeriodicSize tvNkSimpleTime . S.toList
 
 periodicToTransform ::  PeriodicData TVNoKey -> WaveletTransform Double
 periodicToTransform (PeriodicData periodic) = 
-  let levels = ceiling $ logBase (2 :: Double) $ fromIntegral . SEQ.length $ periodic
+  let levels = ceiling . logBase (2 :: Double) . fromIntegral . SEQ.length $ periodic
   in  WaveletTransform $ defaultVdwt levels $ toList $ fmap tvNkSimpleValue periodic
 
 maybeToEither :: String -> Maybe a -> Either String a

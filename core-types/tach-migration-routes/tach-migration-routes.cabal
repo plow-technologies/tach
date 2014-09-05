@@ -51,6 +51,7 @@ Library
                       , lifted-async >= 0.2.0
                       , transformers >= 0.3.0.0
                       , wavelets
+                      , binary-list
 
 Test-Suite spec
   Type:                 exitcode-stdio-1.0
@@ -113,6 +114,7 @@ executable         migration-app
                       , lifted-async
                       , transformers
                       , wavelets
+                      , binary-list
     ghc-options:       -threaded -O2 -rtsopts -Wall -fno-warn-orphans
 
 Source-Repository head
