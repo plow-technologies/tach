@@ -34,6 +34,7 @@ import qualified Data.BinaryList as BL
 --
 --   To apply a bijection @f@ to an argument @x@ use @direct f x@. To apply its
 --   inverse just do @inverse f x@.
+--
 data Bijection a b =
   Bijection { direct  :: a -> b -- ^ Bijection.
             , inverse :: b -> a -- ^ Inverse of the bijection.
@@ -53,7 +54,7 @@ instance Category Bijection where
 
 -- | The /left binary transform/ lifts a permutation (i.e. a bijection from
 --   a set to itself) of a plane to a permutation of binary lists. The transformation
---   condenses at the left.
+--   condenses at the /left/.
 leftBinaryTransform :: Bijection (a,a) (a,a) -> Bijection (BinList a) (BinList a)
 leftBinaryTransform (Bijection f f') = Bijection transform itransform
    where
@@ -67,6 +68,10 @@ leftBinaryTransform (Bijection f f') = Bijection transform itransform
          Left _ -> xs
          Right (l,r) -> BL.joinPairs $ fmap f' $ BL.zip (itransform l) r
 
+-- | Apply the inverse of a permutation of binary lists to a sublist of a binary list.
+--   The 'Int' argument specifies the size of the sublist. More specifically,
+--   applying @leftPartialInverse f i@ to a binary list @xs@ of length @2^n@
+--   returns the result of applying @inverse f@ to the first @max{1,2^(n-i)}@ elements.
 leftPartialInverse :: Bijection (BinList a) (BinList a) -> Int -> BinList a -> BinList a
 leftPartialInverse t = go
   where
@@ -80,7 +85,7 @@ leftPartialInverse t = go
 
 -- | The /right binary transform/ lifts a permutation (i.e. a bijection from
 --   a set to itself) of a plane to a permutation of binary lists. The transformation
---   condenses at the right.
+--   condenses at the /right/.
 rightBinaryTransform :: Bijection (a,a) (a,a) -> Bijection (BinList a) (BinList a)
 rightBinaryTransform (Bijection f g) = Bijection transform itransform
    where
@@ -94,6 +99,10 @@ rightBinaryTransform (Bijection f g) = Bijection transform itransform
          Left _ -> xs
          Right (l,r) -> BL.joinPairs $ fmap g $ BL.zip l (itransform r)
 
+-- | Apply the inverse of a permutation of binary lists to a sublist of a binary list.
+--   The 'Int' argument specifies the size of the sublist. More specifically,
+--   applying @rightPartialInverse f i@ to a binary list @xs@ of length @2^n@
+--   returns the result of applying @inverse f@ to the last @max{1,2^(n-i)}@ elements.
 rightPartialInverse :: Bijection (BinList a) (BinList a) -> Int -> BinList a -> BinList a
 rightPartialInverse t = go
   where
