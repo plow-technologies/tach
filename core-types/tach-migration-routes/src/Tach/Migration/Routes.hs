@@ -65,14 +65,18 @@ import Tach.Migration.Instances()
 --Wavelets and Compression
 import qualified Codec.Compression.GZip as GZ
 import Data.Wavelets.Construction
-import Data.BinaryList (BinList)
-import qualified Data.BinaryList as BL
 
 import Tach.Migration.Routes.Types
 import Tach.Migration.Foundation
 
 import qualified Data.Serialize as SER
 import Data.Either
+
+-- Binary Transform
+import Data.BinaryList (BinList)
+import Data.BinaryList.Algorithm.BinaryTransform
+import qualified Data.BinaryList as BL
+import qualified Data.BinaryList.Serialize as BLS
 
 mkYesodDispatch "MigrationRoutes" resourcesMigrationRoutes
 
@@ -395,7 +399,7 @@ uploadState :: MigrationRoutes
 uploadState master s3Conn state stKey fName key@(ImpulseKey dKey) period delta minPeriodicSize bounds = do
   eSet <- (\(start, end) s k -> query' s (GetTVSimpleImpulseMany k start end)) bounds state key
   res <- T.sequence $ (\set -> do
-          let compressedSet = GZ.compress . encode $ (fmap periodicToTransform) . tvDataToEither <$> classifySet period delta minPeriodicSize set
+          let compressedSet = GZ.compress . encode $ fmap periodicToTransform . tvDataToEither <$> classifySet period delta minPeriodicSize set
           r <- uploadToS3 s3Conn (migrationRoutesS3Bucket master) fName stKey compressedSet >>= return . Right
           case r of
             (Right (S3.S3Success _)) -> do
@@ -403,13 +407,13 @@ uploadState master s3Conn state stKey fName key@(ImpulseKey dKey) period delta m
               _ <- removeState key set
               atomically $ do
                 tsMap <- takeTMVar $ stateMap master
-                putTMVar (stateMap master) (M.insert dKey Idle tsMap)
+                putTMVar (stateMap master) $ M.insert dKey Idle tsMap
               return $ Just ()
             _ -> do
               atomically $ do
                 tsMap <- takeTMVar (stateMap master)
-                putTMVar (stateMap master) (M.insert dKey Idle tsMap)
-              return Nothing) <$> (eitherToMaybe eSet)
+                putTMVar (stateMap master) $ M.insert dKey Idle tsMap
+              return Nothing) <$> eitherToMaybe eSet
   return $ case res of
     Just _ -> Right ()
     Nothing -> Left "Error uploading state"
@@ -497,10 +501,25 @@ attemptLookupInsert cell key tmMap = do
 classifySet :: Int -> Int -> Int -> S.Set TVNoKey -> SEQ.Seq (TVData TVNoKey)
 classifySet period delta minPeriodicSize = classifyData period delta minPeriodicSize tvNkSimpleTime . S.toList
 
+{-
 periodicToTransform ::  PeriodicData TVNoKey -> WaveletTransform Double
 periodicToTransform (PeriodicData periodic) = 
   let levels = ceiling . logBase (2 :: Double) . fromIntegral . SEQ.length $ periodic
   in  WaveletTransform $ defaultVdwt levels $ toList $ fmap tvNkSimpleValue periodic
+-}
+
+---------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------
+-- Code related with the transform
+
+periodicToTransform ::  PeriodicData TVNoKey -> BinList Double
+periodicToTransform (PeriodicData periodic) = BL.fromListWithDefault 0 $ toList $ fmap tvNkSimpleValue periodic
+
+instance Binary a => ToJSON (BinList a) where
+  toJSON = {- wrong function -} . BLS.encode
+
+---------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------
 
 maybeToEither :: String -> Maybe a -> Either String a
 maybeToEither s Nothing = Left s

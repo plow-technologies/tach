@@ -52,6 +52,7 @@ Library
                       , transformers >= 0.3.0.0
                       , wavelets
                       , binary-list
+                      , binary-transform
 
 Test-Suite spec
   Type:                 exitcode-stdio-1.0
@@ -115,6 +116,7 @@ executable         migration-app
                       , transformers
                       , wavelets
                       , binary-list
+                      , binary-transform
     ghc-options:       -threaded -O2 -rtsopts -Wall -fno-warn-orphans
 
 Source-Repository head
