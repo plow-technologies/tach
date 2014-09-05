@@ -65,6 +65,8 @@ import Tach.Migration.Instances()
 --Wavelets and Compression
 import qualified Codec.Compression.GZip as GZ
 import Data.Wavelets.Construction
+import Data.BinaryList (BinList)
+import qualified Data.BinaryList as BL
 
 import Tach.Migration.Routes.Types
 import Tach.Migration.Foundation
@@ -143,7 +145,7 @@ getListKeySortedR = do
   master <- getYesod
   let acidCell = migrationRoutesAcidCell master
   res <- liftIO $ traverseWithKeyTVSimpleImpulseTypeStoreAC acidCell (\_ key@(DK.DKeyRaw (KeyPid pid) _ _ _) state -> do
-    eSetSize <- query' state (GetTVSimpleImpulseSize (ImpulseKey key))
+    eSetSize <- query' state $ GetTVSimpleImpulseSize $ ImpulseKey key
     return $ eitherToMaybe $ KeyPidSize (TE.decodeUtf8 $ DK.encodeKey key) pid <$> eSetSize
     )
   return . toJSON . catMaybes $ snd <$> (M.toList res)
@@ -175,10 +177,7 @@ getKillNodeR = do
   void . liftIO $ tryPutMVar (migrationRoutesWait master) 0
   void . liftIO $ tryPutMVar (migrationRoutesWait master) 0
   void . liftIO $ tryPutMVar (migrationRoutesWait master) 0
-  return . toJSON $ killing
-  where killing :: Text
-        killing = "Killing"
-
+  return $ toJSON ("Killing" :: Text)
 
 getStartArchiveR :: Handler Value
 getStartArchiveR = do
@@ -192,7 +191,6 @@ getStartArchiveR = do
       return . toJSON $ ("Starting GC" :: String)
     _ -> do
       return . toJSON $ gc
-
 
 checkAndProcessGCState :: MonadHandler m => MigrationRoutes -> m ()
 checkAndProcessGCState master = do
@@ -218,7 +216,7 @@ getTotalCountR = do
     case eSetSize of
       Left  _ -> liftIO $ print . DK.encodeKey $ key
       Right _ -> return ()
-    return $ (\size -> size) <$> eSetSize
+    return eSetSize
     )
   let rightsList = rights $ snd <$> (M.toList res)
       leftsList = lefts $ snd <$> (M.toList res)
@@ -338,7 +336,7 @@ handleInsert master stKey state key tvSet = do
   void $ update' state $ InsertManyTVSimpleImpulse key $ S.fromList tvSet -- insert the list into the set
   eSetSize <- query' state $ GetTVSimpleImpulseSize key                   -- get the set size and bounds
   void . liftIO . T.sequence $ checkCreateCheckpoint state <$> ePreSetSize <*> eSetSize
-  eBounds <- query' state (GetTVSimpleImpulseTimeBounds key)
+  eBounds <- query' state $ GetTVSimpleImpulseTimeBounds key
   res <- T.sequence $ checkAndUpload master state stKey key <$> eSetSize <*> eBounds
   return $ case res of
     Left  _ -> Left  ()
@@ -348,12 +346,10 @@ handleInsert master stKey state key tvSet = do
 -- hopefully it cuts down on the size of archives
 checkCreateCheckpoint :: (MonadIO m, Eq a) => AcidState st -> a -> a -> m ()
 checkCreateCheckpoint state preSize postSize = do
-  if (preSize == postSize)
-    then return ()
-    else do
-      --liftIO $ createCheckpoint state
-      liftIO $ E.finally (createArchive state) (createCheckpoint state)
-
+  if preSize == postSize
+     then return ()
+     else do --liftIO $ createCheckpoint state
+             liftIO $ E.finally (createArchive state) (createCheckpoint state)
 
 checkAndUpload :: (MonadIO m, Functor m) =>
      MigrationRoutes
@@ -371,7 +367,7 @@ checkAndUpload master state stKey key@(ImpulseKey dKey) size bounds@(ImpulseStar
         Just Idle -> do
           liftIO $ atomically $ do
             tsMap <- takeTMVar tmMap
-            putTMVar tmMap (M.insert dKey Uploading tsMap)
+            putTMVar tmMap $ M.insert dKey Uploading tsMap
           void $ liftIO . forkIO . void $ uploadState master (s3Conn master) state stKey fName key 15 1 100 bounds
           void $ liftIO $ Prelude.putStrLn "Starting upload"
           --liftIO $ createCheckpoint state
@@ -381,9 +377,8 @@ checkAndUpload master state stKey key@(ImpulseKey dKey) size bounds@(ImpulseStar
     else do
       return ()
   where
-    fName = (show  $ start) ++ "_" ++ (show  $ end)
+    fName = show start ++ "_" ++ show end
     tmMap = stateMap master
-
 
 uploadState :: MigrationRoutes
                      -> S3.S3Connection
@@ -400,7 +395,7 @@ uploadState :: MigrationRoutes
 uploadState master s3Conn state stKey fName key@(ImpulseKey dKey) period delta minPeriodicSize bounds = do
   eSet <- (\(start, end) s k -> query' s (GetTVSimpleImpulseMany k start end)) bounds state key
   res <- T.sequence $ (\set -> do
-          let compressedSet = GZ.compress . encode $ (fmap periodicToTransform) . tvDataToEither <$> (classifySet period delta minPeriodicSize set)
+          let compressedSet = GZ.compress . encode $ (fmap periodicToTransform) . tvDataToEither <$> classifySet period delta minPeriodicSize set
           r <- uploadToS3 s3Conn (migrationRoutesS3Bucket master) fName stKey compressedSet >>= return . Right
           case r of
             (Right (S3.S3Success _)) -> do
@@ -435,11 +430,11 @@ uploadToS3 s3Conn bucket filename path contents =
      S3.S3Object filename (L.toStrict contents) bucket path "text/plain"
 
 data TimeSeriesQuery = TimeSeriesQuery {
-    tsqKey :: String
-  , tsqStart :: Int
-  , tsqEnd :: Int
+    tsqKey    :: String
+  , tsqStart  :: Int
+  , tsqEnd    :: Int
   , tsqPeriod :: Int
-  , tsqDelta :: Int
+  , tsqDelta  :: Int
     } deriving (Read, Show, Eq, Generic)
 
 instance FromJSON TimeSeriesQuery where
@@ -496,19 +491,16 @@ attemptLookupInsert cell key tmMap = do
       atomically $ do
         tsMap <- takeTMVar tmMap
         putTMVar tmMap $ M.insert key Idle tsMap
-      liftIO $ E.finally (createArchive st) (createCheckpoint st)
+      E.finally (createArchive st) (createCheckpoint st)
       return st
-
-
-
 
 classifySet :: Int -> Int -> Int -> S.Set TVNoKey -> SEQ.Seq (TVData TVNoKey)
 classifySet period delta minPeriodicSize set = classifyData period delta minPeriodicSize tvNkSimpleTime $ S.toList set
 
-periodicToTransform ::  (PeriodicData TVNoKey) -> (WaveletTransform Double)
+periodicToTransform ::  PeriodicData TVNoKey -> WaveletTransform Double
 periodicToTransform (PeriodicData periodic) = 
   let levels = ceiling $ logBase (2 :: Double) $ fromIntegral . SEQ.length $ periodic
-  in WaveletTransform $ defaultVdwt levels (toList $ fmap tvNkSimpleValue periodic)
+  in  WaveletTransform $ defaultVdwt levels $ toList $ fmap tvNkSimpleValue periodic
 
 maybeToEither :: String -> Maybe a -> Either String a
 maybeToEither s Nothing = Left s
@@ -524,7 +516,6 @@ resultToEither (Success s) = Right s
 
 -- TEST STUFF
 
- --- Just used for testing below this point
 buildTestImpulseRep :: [Int] -> [Double] -> ImpulseRep (S.Set TVNoKey)
 buildTestImpulseRep is ds = ImpulseRep . S.fromList $ Prelude.zipWith bldFcn is ds 
     where 
