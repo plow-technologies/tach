@@ -31,7 +31,6 @@ import qualified Data.Text.Encoding as TE
 import qualified Filesystem as FS
 import qualified Filesystem.Path as FP
 import qualified Filesystem.Path.CurrentOS as OS
---import Filesystem.Path
 -- Acid and file related
 import Data.Acid
 import Data.Acid.Advanced
@@ -40,7 +39,7 @@ import Data.Acid.Cell (AcidCell,InsertAcidCellPathFileKey)
 import qualified Data.Set as S
 import qualified Data.Map as M
 
---External Tach imports
+-- External Tach imports
 import Tach.Acid.Impulse.State
 import Tach.Acid.Impulse.Cruds
 import Tach.Impulse.Types.Impulse
@@ -48,7 +47,6 @@ import Tach.Impulse.Types.TimeValue
 import Tach.Impulse.Types.TimeValueSeries
 import Tach.Migration.Acidic.Types
 import Tach.Periodic
-import Tach.Transformable.Types
 import Tach.Migration.Types
 import Control.Monad.IO.Class
 -- Yesod and web related
@@ -58,11 +56,11 @@ import Yesod
 import qualified DirectedKeys as DK
 import qualified DirectedKeys.Types as DK
 
---Directly related Tach imports
+-- Directly related Tach imports
 import Tach.Migration.Routes.Internal
 import Tach.Migration.Instances()
 
---Wavelets and Compression
+-- Compression
 import qualified Codec.Compression.GZip as GZ
 
 import Tach.Migration.Routes.Types
@@ -75,6 +73,11 @@ import Data.Either
 import Data.BinaryList (BinList)
 import Data.BinaryList.Algorithm.BinaryTransform
 import qualified Data.BinaryList as BL
+
+-- We are currently using JSON to (de)serialize values.
+-- If we switch to binary serialization, use this module
+-- to serialize binary lists.
+--
 -- import qualified Data.BinaryList.Serialize as BLS
 
 mkYesodDispatch "MigrationRoutes" resourcesMigrationRoutes
@@ -83,19 +86,16 @@ instance Yesod MigrationRoutes where --changing default methods for larger uploa
   maximumContentLength _ (Just (ReceiveTimeSeriesR _)) = Just $ 2 * 1024 * 1024 * 1024 -- 2 gigabytes for ReceiveTimeSeries
   maximumContentLength _  _ = Just $ 2  * 1024 * 1024 -- 2 mb 
 
-instance (ToJSON a ) => ToJSON (SEQ.Seq a) where
+instance ToJSON a => ToJSON (SEQ.Seq a) where
   toJSON = toJSON . toList
 
-instance (ToJSON a) => ToJSON (WaveletTransform a) where
-instance (ToJSON a) => ToJSON (PeriodicData a) where
-instance (ToJSON a) => ToJSON (APeriodicData a) where
-
+instance ToJSON a => ToJSON (PeriodicData a) where
+instance ToJSON a => ToJSON (APeriodicData a) where
 
 tempS3Conn :: S3.S3Connection
 tempS3Conn = S3.S3Connection S3.defaultS3Host "" ""
 
 type MigrationTransportTV = MigrationTransport Text TVNoKey
-
 
 listTest :: IO (S.Set TVNoKey)
 listTest = do
@@ -151,7 +151,7 @@ getListKeySortedR = do
     eSetSize <- query' state $ GetTVSimpleImpulseSize $ ImpulseKey key
     return $ eitherToMaybe $ KeyPidSize (TE.decodeUtf8 $ DK.encodeKey key) pid <$> eSetSize
     )
-  return . toJSON . catMaybes $ snd <$> (M.toList res)
+  return . toJSON . catMaybes $ snd <$> M.toList res
   
 eitherToMaybe :: Either a b -> Maybe b
 eitherToMaybe (Left _) = Nothing
@@ -165,7 +165,7 @@ showLeft (Right x) = Right x
 getKillNodeR :: Handler Value
 getKillNodeR = do
   master <- getYesod
-  let acidCell = (migrationRoutesAcidCell master)
+  let acidCell = migrationRoutesAcidCell master
   liftIO $ do
     --archiveAndHandleTVSimpleImpulseTypeStoreAC acidCell (\ _ state -> return state)
     createCheckpointAndCloseTVSimpleImpulseTypeStoreAC acidCell
@@ -223,7 +223,7 @@ getTotalCountR = do
     )
   let rightsList = rights $ snd <$> (M.toList res)
       leftsList = lefts $ snd <$> (M.toList res)
-  if ((Prelude.length rightsList) /= (Prelude.length (M.toList res)))
+  if Prelude.length rightsList /= Prelude.length (M.toList res)
     then do
       liftIO . Prelude.putStrLn . show $ leftsList
       return . toJSON $ (-1 :: Int)
@@ -251,17 +251,13 @@ gcAllStates gcState acidCell statesFP = do
         _ <- T.traverse wait stateKeyList
         liftIO . Prelude.putStrLn $ "GC done"
         atomically $ writeTVar gcState GCIdle
-        return ()
-    return ()
 
 gcSingleState :: (SER.Serialize datetime, SER.Serialize destination, SER.Serialize source, SER.Serialize key) => OS.FilePath -> DK.DirectedKeyRaw key source destination datetime -> IO ()
 gcSingleState dir key = do
   let fullDir = dir FP.</> (OS.fromText . encodeDirectedKeyRaw $ key) FP.</> (OS.fromText "Archive")
   print fullDir
   isDir <- FS.isDirectory fullDir
-  if isDir
-    then FS.removeTree fullDir
-    else return ()
+  when isDir $ FS.removeTree fullDir
 
 -- | returns the gc state
 getCheckGCStateR :: Handler Value
@@ -317,8 +313,8 @@ saveAndUploadState :: MonadHandler m =>
                             -> [TVNoKey]
                             -> m (Either () ())
 saveAndUploadState master stKey state dKey tvNkList = do
-  let destination = (migrationRoutesDestination master)
-  if (destination == (UTF.toString . unKeyDestination . DK.getDest $ dKey))
+  let destination = migrationRoutesDestination master
+  if destination == (UTF.toString . unKeyDestination . DK.getDest) dKey
     then handleInsert master stKey state (ImpulseKey dKey) tvNkList --If the destination is the same as the destination for the current host
     else do
       _ <- sendResponseStatus status501 $ toJSON incorrectDestination
@@ -362,23 +358,19 @@ checkAndUpload :: (MonadIO m, Functor m) =>
      -> Int
      -> (ImpulseStart Int, ImpulseEnd Int)
      -> m ()
-checkAndUpload master state stKey key@(ImpulseKey dKey) size bounds@(ImpulseStart start, ImpulseEnd end) = do
-  if (size >= 50000)
-    then do
-      sMap <- liftIO . atomically $ readTMVar tmMap
-      case (dKey `M.lookup` sMap) of
-        Just Idle -> do
-          liftIO $ atomically $ do
-            tsMap <- takeTMVar tmMap
-            putTMVar tmMap $ M.insert dKey Uploading tsMap
-          void $ liftIO . forkIO . void $ uploadState master (s3Conn master) state stKey fName key 15 1 100 bounds
-          void $ liftIO $ Prelude.putStrLn "Starting upload"
-          --liftIO $ createCheckpoint state
-          liftIO $ E.finally (createArchive state) (createCheckpoint state)
-        _ -> do
-          return ()
-    else do
-      return ()
+checkAndUpload master state stKey key@(ImpulseKey dKey) size bounds@(ImpulseStart start, ImpulseEnd end) =
+  when (size >= 50000) $ do
+    sMap <- liftIO . atomically $ readTMVar tmMap
+    case dKey `M.lookup` sMap of
+      Just Idle -> do
+        liftIO $ atomically $ do
+          tsMap <- takeTMVar tmMap
+          putTMVar tmMap $ M.insert dKey Uploading tsMap
+        void $ liftIO . forkIO . void $ uploadState master (s3Conn master) state stKey fName key 15 1 100 bounds
+        void $ liftIO $ Prelude.putStrLn "Starting upload"
+        -- liftIO $ createCheckpoint state
+        liftIO $ E.finally (createArchive state) (createCheckpoint state)
+      _ -> return ()
   where
     fName = show start ++ "_" ++ show end
     tmMap = stateMap master
