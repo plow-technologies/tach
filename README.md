@@ -23,6 +23,8 @@ The project is broken into several different classes of package
 
 ## core-types
 
+* binary-transform: An implementation of the binary transform, as explained
+  [here](https://github.com/plow-technologies/writings/tree/master/binary-transform).
 * tach-db-types: ?
 * tach-impulse-series-classes: Retrievable class (which doesn't make much sense?).
 * tach-impulse-series-types:
