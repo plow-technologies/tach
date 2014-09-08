@@ -64,7 +64,6 @@ import Tach.Migration.Instances()
 
 --Wavelets and Compression
 import qualified Codec.Compression.GZip as GZ
-import Data.Wavelets.Construction
 
 import Tach.Migration.Routes.Types
 import Tach.Migration.Foundation
@@ -76,7 +75,7 @@ import Data.Either
 import Data.BinaryList (BinList)
 import Data.BinaryList.Algorithm.BinaryTransform
 import qualified Data.BinaryList as BL
-import qualified Data.BinaryList.Serialize as BLS
+-- import qualified Data.BinaryList.Serialize as BLS
 
 mkYesodDispatch "MigrationRoutes" resourcesMigrationRoutes
 
@@ -512,11 +511,17 @@ periodicToTransform (PeriodicData periodic) =
 ---------------------------------------------------------------------------------------------------------------
 -- Code related with the transform
 
-periodicToTransform ::  PeriodicData TVNoKey -> BinList Double
-periodicToTransform (PeriodicData periodic) = BL.fromListWithDefault 0 $ toList $ fmap tvNkSimpleValue periodic
+theTransform :: Bijection (BinList Double) (BinList Double)
+theTransform = leftBinaryTransform $ Bijection f g
+  where
+    f (x,y) = ((x+y)/2,(y-x)/2)
+    g (x,y) = (x-y,x+y)
 
-instance Binary a => ToJSON (BinList a) where
-  toJSON = {- wrong function -} . BLS.encode
+periodicToTransform ::  PeriodicData TVNoKey -> BinList Double
+periodicToTransform (PeriodicData periodic) = direct theTransform $ BL.fromListWithDefault 0 $ toList $ fmap tvNkSimpleValue periodic
+
+instance ToJSON a => ToJSON (BinList a) where
+  toJSON = toJSON . toList
 
 ---------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------
