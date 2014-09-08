@@ -5,7 +5,7 @@ module Tach.Migration.Foundation where
 import Data.Text
 import qualified Data.Text.Encoding as TE
 import Data.Serialize
-import Data.SafeCopy        ( SafeCopy, base, deriveSafeCopy )
+import Data.SafeCopy        ( SafeCopy )
 
 -- Acid and file related
 import Data.Acid
@@ -18,22 +18,18 @@ import qualified Data.Vector as V
 --External Tach imports
 import Tach.Impulse.Types.Impulse
 import Tach.Migration.Acidic.Types
+import Tach.Acid.Impulse.Cruds()
 
 -- Yesod and web related
 
 -- Used for serializing and deserializing keys for indexing
 import qualified DirectedKeys as DK
 import qualified DirectedKeys.Types as DK
-import qualified Data.Serialize as S
 
 --Wavelets and Compression
-import Data.Wavelets.Construction
-import Tach.Migration.Types
 import Tach.Impulse.Types.TimeValue
 
 import Data.Acid.Cell
-import Tach.Acid.Impulse.Cruds
-import Tach.Migration.Routes.Types
 import Filesystem.Path
 import Data.Typeable
 
