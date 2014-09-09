@@ -8,6 +8,7 @@ module Data.BinaryList.Algorithm.BinaryTransform (
     -- * Binary Transform
     -- ** Left version
   , leftBinaryTransform
+  , leftInverseBinaryTransformDec
   , leftPartialInverse
     -- ** Right version
   , rightBinaryTransform
@@ -21,6 +22,7 @@ import Data.Maybe (fromJust)
 -- Binary lists
 import Data.BinaryList (BinList)
 import qualified Data.BinaryList as BL
+import Data.BinaryList.Serialize (Decoded (..))
 
 -- | A bijection from @a@ to @b@ is a function from @a@ to @b@ that is invertible.
 --   A function is invertible if and only if it's both injective and surjective.
@@ -67,6 +69,18 @@ leftBinaryTransform (Bijection f f') = Bijection transform itransform
        case BL.split xs of
          Left _ -> xs
          Right (l,r) -> BL.joinPairs $ fmap f' $ BL.zip (itransform l) r
+
+leftInverseBinaryTransformDec :: Bijection (a,a) (a,a) -> Decoded a -> Decoded a
+leftInverseBinaryTransformDec (Bijection _ f') (PartialResult xs0 d0) = PartialResult xs0 $ go xs0 d0
+  where
+    go acc (PartialResult xs d) = 
+      let ys = BL.joinPairs $ fmap f' $ BL.zip acc xs
+      in  PartialResult ys $ go ys d
+    go acc (FinalResult xs r) =
+      let ys = BL.joinPairs $ fmap f' $ BL.zip acc xs
+      in  FinalResult ys r
+    go _ d = d
+leftInverseBinaryTransformDec _ d = d
 
 -- | Apply the inverse of a permutation of binary lists to a sublist of a binary list.
 --   The 'Int' argument specifies the size of the sublist. More specifically,
