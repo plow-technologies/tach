@@ -73,26 +73,27 @@ fromFoldable :: F.Foldable f => f a -> S.Seq a
 fromFoldable = F.foldl (S.|>) S.empty 
 
 -- | The function that folds over a list and looks for any matches in a period
-takePeriodic :: (Num a, Ord a) => a -> a -> (b -> a) -> S.Seq (TVData b) -> b ->  S.Seq (TVData b)
+takePeriodic :: (Num a, Ord a) => a -> a -> (b -> a) -> S.Seq (TVData b) -> b -> S.Seq (TVData b)
 takePeriodic period delta toNumFunc old current = 
   let maxPeriod = period + delta
       minPeriod = period - delta
       mLast = lastMaySeq old
   in case mLast of
-    Nothing ->
-      S.singleton $ TVAPeriodic $ APeriodicData (S.singleton current)
-    (Just (TVPeriodic (PeriodicData periodData))) ->
-      let firstVal = lastSeq periodData
-          difference = abs $ (toNumFunc current) - (toNumFunc firstVal)
-      in if ((difference <= maxPeriod) && (difference >= minPeriod))
-        then ((initSeq old) S.|> (TVPeriodic . PeriodicData $  periodData S.|> current))
-        else ((old) S.|> (TVAPeriodic $ APeriodicData (S.singleton current)))
-    (Just (TVAPeriodic (APeriodicData aperiodicData))) -> 
+    Nothing -> S.singleton $ TVAPeriodic $ APeriodicData $ S.singleton current
+
+    Just (TVPeriodic (PeriodicData periodData)) ->
+      let lastVal = lastSeq periodData
+          difference = abs $ toNumFunc current - toNumFunc lastVal
+      in if difference <= maxPeriod && difference >= minPeriod
+        then initSeq old S.|> (TVPeriodic . PeriodicData $ periodData S.|> current)
+        else old S.|> TVAPeriodic (APeriodicData $ S.singleton current)
+
+    Just (TVAPeriodic (APeriodicData aperiodicData)) -> 
       let lastVal = lastSeq aperiodicData
-          difference = abs $ (toNumFunc current) - (toNumFunc lastVal)
-      in if ((difference <= maxPeriod) && (difference >= minPeriod))
-        then ((initSeq old) S.|> (TVPeriodic . PeriodicData $ aperiodicData S.|> current))
-        else (old S.|> (TVAPeriodic $ APeriodicData (S.singleton current)))
+          difference = abs $ toNumFunc current - toNumFunc lastVal
+      in if difference <= maxPeriod && difference >= minPeriod
+        then initSeq old S.|> (TVPeriodic . PeriodicData $ aperiodicData S.|> current)
+        else old S.|> TVAPeriodic (APeriodicData $ S.singleton current)
 
 -----------------------------
 -- Sequence related functions

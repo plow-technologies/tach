@@ -252,9 +252,10 @@ gcAllStates gcState acidCell statesFP = do
         liftIO . Prelude.putStrLn $ "GC done"
         atomically $ writeTVar gcState GCIdle
 
-gcSingleState :: (SER.Serialize datetime, SER.Serialize destination, SER.Serialize source, SER.Serialize key) => OS.FilePath -> DK.DirectedKeyRaw key source destination datetime -> IO ()
+gcSingleState :: SER.Serialize datetime, SER.Serialize destination, SER.Serialize source, SER.Serialize key
+              => OS.FilePath -> DK.DirectedKeyRaw key source destination datetime -> IO ()
 gcSingleState dir key = do
-  let fullDir = dir FP.</> (OS.fromText . encodeDirectedKeyRaw $ key) FP.</> (OS.fromText "Archive")
+  let fullDir = dir FP.</> (OS.fromText . encodeDirectedKeyRaw $ key) FP.</> OS.fromText "Archive"
   print fullDir
   isDir <- FS.isDirectory fullDir
   when isDir $ FS.removeTree fullDir
@@ -274,7 +275,7 @@ postReceiveTimeSeriesR size = do
   checkAndProcessGCState master
   liftIO $ Prelude.putStrLn "Parsing JSON body"
   eTsInfo <- resultToEither <$> parseJsonBody :: Handler (Either String [MigrationTransportTV]) -- Get the post body
-  let acidCell = (migrationRoutesAcidCell master)
+  let acidCell = migrationRoutesAcidCell master
   liftIO $ Prelude.putStrLn "Traversing"
   res <- T.sequence $ T.traverse
                           (\smallList -> do                                                                      --T.traverse (\l -> do
@@ -344,11 +345,9 @@ handleInsert master stKey state key tvSet = do
 -- | Used only after insert. Checks the two sizes and if they are equal it creates a checkpoint and archives it
 -- hopefully it cuts down on the size of archives
 checkCreateCheckpoint :: (MonadIO m, Eq a) => AcidState st -> a -> a -> m ()
-checkCreateCheckpoint state preSize postSize = do
-  if preSize == postSize
-     then return ()
-     else do --liftIO $ createCheckpoint state
-             liftIO $ E.finally (createArchive state) (createCheckpoint state)
+checkCreateCheckpoint state preSize postSize =
+  unless (preSize == postSize) $ liftIO $ E.finally (createArchive state) (createCheckpoint state)
+  -- There was here a commented: liftIO $ createCheckpoint state
 
 checkAndUpload :: (MonadIO m, Functor m) =>
      MigrationRoutes
@@ -491,13 +490,6 @@ attemptLookupInsert cell key tmMap = do
 
 classifySet :: Int -> Int -> Int -> S.Set TVNoKey -> SEQ.Seq (TVData TVNoKey)
 classifySet period delta minPeriodicSize = classifyData period delta minPeriodicSize tvNkSimpleTime . S.toList
-
-{-
-periodicToTransform ::  PeriodicData TVNoKey -> WaveletTransform Double
-periodicToTransform (PeriodicData periodic) = 
-  let levels = ceiling . logBase (2 :: Double) . fromIntegral . SEQ.length $ periodic
-  in  WaveletTransform $ defaultVdwt levels $ toList $ fmap tvNkSimpleValue periodic
--}
 
 ---------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------
