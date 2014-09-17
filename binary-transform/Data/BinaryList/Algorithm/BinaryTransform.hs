@@ -5,6 +5,7 @@ module Data.BinaryList.Algorithm.BinaryTransform (
     -- * Bijections
     Bijection (..)
   , inverseBijection
+  , functorBijection
     -- * Binary Transform
     -- ** Left version
   , leftBinaryTransform
@@ -48,6 +49,81 @@ data Bijection a b =
 inverseBijection :: Bijection a b -> Bijection b a
 inverseBijection (Bijection f f') = Bijection f' f
 
+---------------------------------
+---------------------------------
+-- Bijections on functors
+
+functorBijection :: Functor f => Bijection a b -> Bijection (f a) (f b)
+functorBijection (Bijection f f') = Bijection (fmap f) (fmap f')
+
+{-
+
+Given a bijection @f :: a -> b@, with inverse @f' :: b -> a@, and a functor @c@,
+we can build a bijection @g :: c a -> c b@. Namely: @g = fmap f@. The proof
+goes as follows:
+
+** Proof
+
+Let @f :: a -> b@ be a bijection with inverse @f' :: b -> a@. Let @c@ be a functor.
+Define @g = fmap f@.
+
+* Injectivity:
+     Let @v, w :: c a@ such that @g(v) = g(w)@
+  by definition of g
+     => fmap f v = fmap f w
+  applying @fmap f'@ to both sides
+     => fmap f' (fmap f v) = fmap f' (fmap f w)
+  by functor law
+     => fmap (f' . f) v = fmap (f' . f) w
+  since f' is the inverse of f
+     => fmap id v = fmap id w
+  by functor law
+     => v = w
+
+* Surjectivity:
+     Let @w :: c b@.
+     Define @v = fmap f' w@.
+     => g(v) = g (fmap f' w)
+  by definition of @g@
+     => g(v) = fmap f (fmap f' w)
+  by functor law
+     => g(v) = fmap (f . f') w
+  since f' is the inverse of f
+     => g(v) = fmap id w
+  by functor law
+     => g(v) = w
+
+Therefore, @g :: c a -> c b@ is a bijection. Its inverse is @g' = fmap f'@. Indeed:
+
+* Left inverse:
+     Let @v :: c a@.
+     => g' (g v)
+  by definition of g and g'
+      = fmap f' (fmap f v)
+  by functor law
+      = fmap (f' . f) v
+  since f' is the inverse of f
+      = fmap id v
+  by functor law
+      = v
+
+* Right inverse:
+     Let @w :: c b@.
+     => g (g' w)
+  by definition of g and g'
+      = fmap f (fmap f' w)
+  by functor law
+      = fmap (f . f') w
+  since f' is the inverse of f
+      = fmap id w
+  by functor law
+      = w
+
+-}
+
+---------------------------------
+---------------------------------
+
 instance Category Bijection where
   id = Bijection Prelude.id Prelude.id
   Bijection f f' . Bijection g g' = Bijection (f Prelude.. g) (g' Prelude.. f')
@@ -74,11 +150,15 @@ leftInverseBinaryTransformDec :: Bijection (a,a) (a,a) -> Decoded a -> Decoded a
 leftInverseBinaryTransformDec (Bijection _ f') (PartialResult xs0 d0) = PartialResult xs0 $ go xs0 d0
   where
     go acc (PartialResult xs d) = 
-      let ys = BL.joinPairs $ fmap f' $ BL.zip acc xs
+      let ys = case BL.split xs of
+                 Right (_,r) -> BL.joinPairs $ fmap f' $ BL.zip acc r
+                 Left _ -> xs
       in  PartialResult ys $ go ys d
-    go acc (FinalResult xs r) =
-      let ys = BL.joinPairs $ fmap f' $ BL.zip acc xs
-      in  FinalResult ys r
+    go acc (FinalResult xs rm) =
+      let ys = case BL.split xs of
+                 Right (_,r) -> BL.joinPairs $ fmap f' $ BL.zip acc r
+                 Left _ -> xs
+      in  FinalResult ys rm
     go _ d = d
 leftInverseBinaryTransformDec _ d = d
 
