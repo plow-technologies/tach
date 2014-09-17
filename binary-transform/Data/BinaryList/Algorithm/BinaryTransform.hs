@@ -6,6 +6,7 @@ module Data.BinaryList.Algorithm.BinaryTransform (
     Bijection (..)
   , inverseBijection
   , functorBijection
+  , productBijection
     -- * Binary Transform
     -- ** Left version
   , leftBinaryTransform
@@ -17,8 +18,8 @@ module Data.BinaryList.Algorithm.BinaryTransform (
   ) where
 
 import Prelude hiding (id,(.))
-import qualified Prelude
 import Control.Category
+import Control.Arrow ((***))
 import Data.Maybe (fromJust)
 -- Binary lists
 import Data.BinaryList (BinList)
@@ -53,14 +54,16 @@ inverseBijection (Bijection f f') = Bijection f' f
 ---------------------------------
 -- Bijections on functors
 
+{-# INLINE functorBijection #-}
+
+-- | Lift a 'Bijection' to work over an arbitrary 'Functor'.
 functorBijection :: Functor f => Bijection a b -> Bijection (f a) (f b)
 functorBijection (Bijection f f') = Bijection (fmap f) (fmap f')
 
 {-
 
 Given a bijection @f :: a -> b@, with inverse @f' :: b -> a@, and a functor @c@,
-we can build a bijection @g :: c a -> c b@. Namely: @g = fmap f@. The proof
-goes as follows:
+we can build a bijection @g :: c a -> c b@. Namely: @g = fmap f@.
 
 ** Proof
 
@@ -123,10 +126,93 @@ Therefore, @g :: c a -> c b@ is a bijection. Its inverse is @g' = fmap f'@. Inde
 
 ---------------------------------
 ---------------------------------
+-- Product Bijection
+
+-- | The product of two bijections. This is the equivalent to '***' for the 'Bijection' type.
+productBijection :: Bijection a b -> Bijection c d -> Bijection (a,c) (b,d)
+productBijection (Bijection f f') (Bijection g g') = Bijection h h'
+  where
+    h  = f  *** g
+    h' = f' *** g'
+
+{-
+
+Let @f :: a -> b@ be a bijection with inverse @f' :: b -> a@.
+Let @g :: c -> d@ be a bijection with inverse @g' :: d -> c@.
+Define @h = f *** g@. Then @h :: (a,c) -> (b,d)@ is a bijection.
+
+** Proof
+
+* Injectivity:
+     Let @p, q :: (a,c)@ such that @h(p) = h(q)@
+  by definition of h
+     => (f *** g) p = (f *** g) q
+  making explicit that @p@ and @q@ are pairs
+     => (f *** g) (p1,p2) = (f *** g) (q1,q2)
+  by definition of (***)
+     => (f p1, g p2) = (f q1, g q2)
+  by pair equality
+     => f p1 = f q1 AND g p2 = g q2
+  by injectivy of f and g
+     => p1 = q1 AND p2 = q2
+  since p = (p1,p2) AND q = (q1,q2)
+     => p = q
+
+* Surjectivity:
+     Let @q :: (b,d)@.
+  making explicit that @q@ is a pair
+     => q = (q1,q2)
+        Define p = (f' q1, g' q2)
+  by definition of h
+     => h(p) = (f *** g) p
+  by definition of p
+     => h(p) = (f *** g) (f' q1, g' q2)
+  by definition of (***)
+     => h(p) = (f (f' q1), g (g' q2))
+  since f' is the inverse of f, and g' is the inverse of g
+     => h(p) = (q1,q2)
+  since q = (q1,q2)
+     => h(p) = q
+
+Therefore, @h :: (a,c) -> (b,d)@ is a bijection. Its inverse is
+@h' = f' *** g'@. Indeed:
+
+* Left inverse:
+     Let @p :: (a,c)@.
+     => h' (h p)
+  making explicit that @p@ is a pair
+      = h' (h (p1,p2))
+  by definition of h
+      = h' (f p1, g p2)
+  by definition of h'
+      = (f' (f p1), g' (g p2))
+  since f' is the inverse of f, and g' is the inverse of g
+      = (p1, p2)
+  since p = (p1,p2)
+      = p
+
+* Right inverse:
+     Let @q :: (b,d)@.
+     => h (h' q)
+  making explicit that @q@ is a pair
+      = h (h' (q1,q2))
+  by definition of h'
+      = h (f' q1, g' q2)
+  by definition of h
+      = (f (f' q1), g (g' q2))
+  since f' is the inverse of f, and g' is the inverse of g
+      = (q1, q2)
+  since q = (q1,q2)
+      = q
+
+-}
+
+---------------------------------
+---------------------------------
 
 instance Category Bijection where
-  id = Bijection Prelude.id Prelude.id
-  Bijection f f' . Bijection g g' = Bijection (f Prelude.. g) (g' Prelude.. f')
+  id = Bijection id id
+  Bijection f f' . Bijection g g' = Bijection (f . g) (g' . f')
 
 -- Left Binary Transform
 
