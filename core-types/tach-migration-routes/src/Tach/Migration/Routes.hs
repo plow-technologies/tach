@@ -8,6 +8,7 @@ import qualified Control.Exception as E
 import Data.Aeson
 import qualified Data.Traversable as T
 import Control.Applicative
+import Control.Arrow ((***))
 import Control.Concurrent
 import Control.Concurrent.Async
 import qualified Control.Concurrent.Async.Lifted as AL
@@ -390,9 +391,8 @@ uploadState :: MigrationRoutes
 uploadState master s3Conn state stKey fName key@(ImpulseKey dKey) {- period delta minPeriodicSize -} (start,end) = do
   eSet <- query' state $ GetTVSimpleImpulseMany key start end
   res <- T.sequence $ (\set -> do
-          let (_,mvs) = normalizeSampling $ toList set
-              vs = fmap (fromMaybe 0) mvs -- This is PROVISIONAL
-              compressedSet = GZ.compress $ BLS.encode $ direct theTransform $ BL.fromListWithDefault 0 vs
+          let (_,vs) = normalizeSampling $ toList set
+              compressedSet = GZ.compress $ BLS.encode $ direct theMaybeTransform $ BL.fromListWithDefault Nothing vs
               -- compressedSet = GZ.compress . encode $ fmap periodicToTransform . tvDataToEither <$> classifySet period delta minPeriodicSize set
           r <- uploadToS3 s3Conn (migrationRoutesS3Bucket master) fName stKey compressedSet >>= return . Right
           case r of
@@ -499,17 +499,22 @@ classifySet period delta minPeriodicSize = classifyData period delta minPeriodic
 ---------------------------------------------------------------------------------------------------------------
 -- Code related with the transform
 
-theTransform :: Bijection (BinList Double) (BinList Double)
-theTransform = leftBinaryTransform $ Bijection f g
+theBijection :: Bijection (Double,Double) (Double,Double)
+theBijection = Bijection f f'
   where
-    f (x,y) = ((x+y)/2,(y-x)/2)
-    g (x,y) = (x-y,x+y)
+    f  (x,y) = ((x+y)/2,(y-x)/2)
+    f' (x,y) = (x-y,x+y)
 
-periodicToTransform ::  PeriodicData TVNoKey -> BinList Double
-periodicToTransform (PeriodicData periodic) = direct theTransform $ BL.fromListWithDefault 0 $ toList $ fmap tvNkSimpleValue periodic
+theTransform :: Bijection (BinList Double) (BinList Double)
+theTransform = leftBinaryTransform theBijection
 
-instance ToJSON a => ToJSON (BinList a) where
-  toJSON = toJSON . toList
+theMaybeTransform :: Bijection (BinList (Maybe Double)) (BinList (Maybe Double))
+theMaybeTransform = leftBinaryTransform $ Bijection f f'
+  where
+    f  (Just x, Just y) = Just *** Just $ direct  theBijection (x,y)
+    f  v = v
+    f' (Just x, Just y) = Just *** Just $ inverse theBijection (x,y)
+    f' v = v
 
 -- Double values serialization
 
@@ -534,7 +539,7 @@ getMaybeDouble = do
 -- Sample list normalization
 
 normalPeriod :: Int
-normalPeriod = 1000
+normalPeriod = 1
 
 normalizeSampling :: [TVNoKey] -> (Int,[Maybe Double])
 normalizeSampling [] = (0,[])
