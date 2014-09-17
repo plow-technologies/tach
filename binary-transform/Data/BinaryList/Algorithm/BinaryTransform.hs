@@ -128,12 +128,11 @@ Therefore, @g :: c a -> c b@ is a bijection. Its inverse is @g' = fmap f'@. Inde
 ---------------------------------
 -- Product Bijection
 
+{-# INLINE productBijection #-}
+
 -- | The product of two bijections. This is the equivalent to '***' for the 'Bijection' type.
 productBijection :: Bijection a b -> Bijection c d -> Bijection (a,c) (b,d)
-productBijection (Bijection f f') (Bijection g g') = Bijection h h'
-  where
-    h  = f  *** g
-    h' = f' *** g'
+productBijection (Bijection f f') (Bijection g g') = Bijection (f *** g) (f' *** g')
 
 {-
 
