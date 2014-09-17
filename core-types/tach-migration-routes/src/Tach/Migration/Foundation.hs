@@ -148,4 +148,3 @@ initializeTVSimpleImpulseTypeStoreAC :: Text
 updateTVSimpleImpulseTypeStoreAC :: AcidCell KeyPid KeySource KeyDestination KeyTime t5 t6
                                           -> AcidState t5 -> TVSimpleImpulseTypeStore -> IO ()
 
-traverseWithKeyTVSimpleImpulseTypeStoreAC = undefined

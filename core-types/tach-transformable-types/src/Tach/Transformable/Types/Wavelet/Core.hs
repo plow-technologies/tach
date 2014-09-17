@@ -29,7 +29,7 @@ data WaveletTransformed a = WaveletTransformed {
   , waveletLevels         :: Int
 } deriving (Show, Eq, Ord, Typeable)
 
-instance (Ord a) => Bound (WaveletTransformed a) where
+instance Ord a => Bound (WaveletTransformed a) where
   bounds = waveletStart &&& waveletEnd
 
 instance Queryable (WaveletTransformed Double) TVNoKey where

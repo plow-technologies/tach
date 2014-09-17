@@ -74,11 +74,10 @@ import Data.BinaryList (BinList)
 import Data.BinaryList.Algorithm.BinaryTransform
 import qualified Data.BinaryList as BL
 
--- We are currently using JSON to (de)serialize values.
--- If we switch to binary serialization, use this module
--- to serialize binary lists.
---
--- import qualified Data.BinaryList.Serialize as BLS
+import Data.Binary.Put
+import Data.Binary.Get
+import qualified Data.BinaryList.Serialize as BLS
+import Data.ReinterpretCast (doubleToWord,wordToDouble)
 
 mkYesodDispatch "MigrationRoutes" resourcesMigrationRoutes
 
@@ -252,7 +251,7 @@ gcAllStates gcState acidCell statesFP = do
         liftIO . Prelude.putStrLn $ "GC done"
         atomically $ writeTVar gcState GCIdle
 
-gcSingleState :: SER.Serialize datetime, SER.Serialize destination, SER.Serialize source, SER.Serialize key
+gcSingleState :: (SER.Serialize datetime, SER.Serialize destination, SER.Serialize source, SER.Serialize key)
               => OS.FilePath -> DK.DirectedKeyRaw key source destination datetime -> IO ()
 gcSingleState dir key = do
   let fullDir = dir FP.</> (OS.fromText . encodeDirectedKeyRaw $ key) FP.</> OS.fromText "Archive"
@@ -365,7 +364,9 @@ checkAndUpload master state stKey key@(ImpulseKey dKey) size bounds@(ImpulseStar
         liftIO $ atomically $ do
           tsMap <- takeTMVar tmMap
           putTMVar tmMap $ M.insert dKey Uploading tsMap
-        void $ liftIO . forkIO . void $ uploadState master (s3Conn master) state stKey fName key 15 1 100 bounds
+        -- Old version call, with period information arguments
+        -- void $ liftIO . forkIO . void $ uploadState master (s3Conn master) state stKey fName key 15 1 100 bounds
+        void $ liftIO . forkIO . void $ uploadState master (s3Conn master) state stKey fName key bounds
         void $ liftIO $ Prelude.putStrLn "Starting upload"
         -- liftIO $ createCheckpoint state
         liftIO $ E.finally (createArchive state) (createCheckpoint state)
@@ -381,18 +382,21 @@ uploadState :: MigrationRoutes
                      -> String
                      -> ImpulseKey
                           (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime)
-                     -> Int
-                     -> Int
-                     -> Int
+                     -- -> Int
+                     -- -> Int
+                     -- -> Int
                      -> (ImpulseStart Int, ImpulseEnd Int)
                      -> IO (Either String ())
-uploadState master s3Conn state stKey fName key@(ImpulseKey dKey) period delta minPeriodicSize bounds = do
-  eSet <- (\(start, end) s k -> query' s (GetTVSimpleImpulseMany k start end)) bounds state key
+uploadState master s3Conn state stKey fName key@(ImpulseKey dKey) {- period delta minPeriodicSize -} (start,end) = do
+  eSet <- query' state $ GetTVSimpleImpulseMany key start end
   res <- T.sequence $ (\set -> do
-          let compressedSet = GZ.compress . encode $ fmap periodicToTransform . tvDataToEither <$> classifySet period delta minPeriodicSize set
+          let (_,mvs) = normalizeSampling $ toList set
+              vs = fmap (fromMaybe 0) mvs -- This is PROVISIONAL
+              compressedSet = GZ.compress $ BLS.encode $ direct theTransform $ BL.fromListWithDefault 0 vs
+              -- compressedSet = GZ.compress . encode $ fmap periodicToTransform . tvDataToEither <$> classifySet period delta minPeriodicSize set
           r <- uploadToS3 s3Conn (migrationRoutesS3Bucket master) fName stKey compressedSet >>= return . Right
           case r of
-            (Right (S3.S3Success _)) -> do
+            Right (S3.S3Success _) -> do
               Prelude.putStrLn "Uploaded to S3"
               _ <- removeState key set
               atomically $ do
@@ -401,7 +405,7 @@ uploadState master s3Conn state stKey fName key@(ImpulseKey dKey) period delta m
               return $ Just ()
             _ -> do
               atomically $ do
-                tsMap <- takeTMVar (stateMap master)
+                tsMap <- takeTMVar $ stateMap master
                 putTMVar (stateMap master) $ M.insert dKey Idle tsMap
               return Nothing) <$> eitherToMaybe eSet
   return $ case res of
@@ -506,6 +510,57 @@ periodicToTransform (PeriodicData periodic) = direct theTransform $ BL.fromListW
 
 instance ToJSON a => ToJSON (BinList a) where
   toJSON = toJSON . toList
+
+-- Double values serialization
+
+putDouble :: Double -> Put
+putDouble = putWord64le . doubleToWord
+
+getDouble :: Get Double
+getDouble = wordToDouble <$> getWord64le
+
+putMaybeDouble :: Maybe Double -> Put
+putMaybeDouble Nothing  = putWord8 0
+putMaybeDouble (Just x) = putWord8 1 >> putDouble x
+
+getMaybeDouble :: Get (Maybe Double)
+getMaybeDouble = do
+  b <- getWord8
+  case b of
+    0 -> return Nothing
+    1 -> Just <$> getDouble
+    _ -> fail "getMaybeDouble: invalid encoding."
+
+-- Sample list normalization
+
+normalPeriod :: Int
+normalPeriod = 1000
+
+normalizeSampling :: [TVNoKey] -> (Int,[Maybe Double])
+normalizeSampling [] = (0,[])
+normalizeSampling vs =
+  let -- First, we scale time so a unit of time is equivalent to normalPeriod.
+      -- The results are stored in pairs, to feed them later to Data.Map.fromList.
+      nvs = fmap (\(TVNoKey t x) -> (div t normalPeriod,x)) vs
+      -- We place time scaled values in ascendent order, getting rid of repetitions
+      -- in time.
+      ws = fmap (uncurry TVNoKey) $ M.toAscList $ M.fromListWith (\x y -> (x+y)/2) nvs
+      -- Let t0 (initial time) be the scaled time of the first entry
+      t0 = tvNkSimpleTime $ Prelude.head ws
+      -- Fill every unit of scaled time, either with Just or Nothing, depending if
+      -- there is a value in that particular time. This function makes some assumptions.
+      -- Namely:
+      --  * Time of the keys are in ascendent order.
+      --  * There are no two keys with the same scaled time.
+      -- These two conditions are guaranteed by construction of ws.
+      go ct xs@(TVNoKey t x : ys) =
+        if t == ct
+           then Just x  : go (ct+1) ys
+           else Nothing : go (ct+1) xs
+      go _ [] = []
+  in  ( t0*normalPeriod -- Normalized start time
+      , go t0 ws        -- List of (maybe) samples
+        )
 
 ---------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------
