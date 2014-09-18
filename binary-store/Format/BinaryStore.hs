@@ -116,7 +116,6 @@ getHeader = do
   dr <- getDirection
   c <- get
   l <- getWord8
-  -- b <- (if c then getCompressed else getLazyByteString) (valueSize * 2 ^ l)
   return (m,n,d,dr,c,l)
 
 {- Compression algorithm
