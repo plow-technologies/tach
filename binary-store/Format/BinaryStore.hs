@@ -219,12 +219,18 @@ createBinaryStore :: BinaryStoreValue a
 createBinaryStore dr n d c xs =
   BinaryStore (modeValue $ BL.head xs) n d dr c (fromIntegral $ BL.lengthIndex xs) $
     let p     = fromIntegral n / fromIntegral d
-        trans = if dr == FromLeft then leftBinaryTransform else rightBinaryTransform
+        trans = (if dr == FromLeft
+                    then leftBinaryTransform
+                    else rightBinaryTransform) $ averageBijection p
         comp  = if c then compress else id
-    in  compress $ BLS.encData $ BLS.encodeBinList putValue dr $ direct (trans $ averageBijection p) xs
+    in  compress $ BLS.encData $ BLS.encodeBinList putValue dr $ direct trans xs
 
 readBinaryStore :: BinaryStoreValue a => BinaryStore -> Decoded a
 readBinaryStore bs =
-  let decomp = if bsCompression bs then decompress else id
-      encd   = BLS.EncodedBinList (bsDirection bs) (fromIntegral $ bsLength bs) $ decomp $ bsData bs
-  in  BLS.decData $ BLS.decodeBinList getValue encd
+  let decomp  = if bsCompression bs then decompress else id
+      encd    = BLS.EncodedBinList (bsDirection bs) (fromIntegral $ bsLength bs) $ decomp $ bsData bs
+      p       = fromIntegral (bsNumerator bs) / fromIntegral (bsDenominator bs)
+      detrans = (if bsDirection bs == FromLeft
+                    then leftInverseBinaryTransformDec
+                    else rightInverseBinaryTransformDec) $ averageBijection p
+  in  detrans $ BLS.decData $ BLS.decodeBinList getValue encd
