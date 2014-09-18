@@ -14,6 +14,7 @@ module Data.BinaryList.Algorithm.BinaryTransform (
   , leftPartialInverse
     -- ** Right version
   , rightBinaryTransform
+  , rightInverseBinaryTransformDec
   , rightPartialInverse
   ) where
 
@@ -266,7 +267,7 @@ leftPartialInverse t = go
 --   a set to itself) of a plane to a permutation of binary lists. The transformation
 --   condenses at the /right/.
 rightBinaryTransform :: Bijection (a,a) (a,a) -> Bijection (BinList a) (BinList a)
-rightBinaryTransform (Bijection f g) = Bijection transform itransform
+rightBinaryTransform (Bijection f f') = Bijection transform itransform
    where
      transform xs =
        case BL.disjoinPairs xs of
@@ -276,7 +277,7 @@ rightBinaryTransform (Bijection f g) = Bijection transform itransform
      itransform xs =
        case BL.split xs of
          Left _ -> xs
-         Right (l,r) -> BL.joinPairs $ fmap g $ BL.zip l (itransform r)
+         Right (l,r) -> BL.joinPairs $ fmap f' $ BL.zip l (itransform r)
 
 -- | Apply the inverse of a permutation of binary lists to a sublist of a binary list.
 --   The 'Int' argument specifies the size of the sublist. More specifically,
@@ -290,3 +291,19 @@ rightPartialInverse t = go
       case BL.split xs of
         Right (_,r) -> go (n-1) r
         _ -> xs
+
+rightInverseBinaryTransformDec :: Bijection (a,a) (a,a) -> Decoded a -> Decoded a
+rightInverseBinaryTransformDec (Bijection _ f') (PartialResult xs0 d0) = PartialResult xs0 $ go xs0 d0
+  where
+    go acc (PartialResult xs d) = 
+      let ys = case BL.split xs of
+                 Right (l,_) -> BL.joinPairs $ fmap f' $ BL.zip l acc
+                 Left _ -> xs
+      in  PartialResult ys $ go ys d
+    go acc (FinalResult xs rm) =
+      let ys = case BL.split xs of
+                 Right (l,_) -> BL.joinPairs $ fmap f' $ BL.zip l acc
+                 Left _ -> xs
+      in  FinalResult ys rm
+    go _ d = d
+rightInverseBinaryTransformDec _ d = d
