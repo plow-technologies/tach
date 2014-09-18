@@ -3,12 +3,11 @@
 
 module Tach.Migration.Routes where
 
---General Haskell imports
+-- General Haskell imports
 import qualified Control.Exception as E
-import Data.Aeson
+import Data.Aeson hiding (encode)
 import qualified Data.Traversable as T
 import Control.Applicative
-import Control.Arrow ((***))
 import Control.Concurrent
 import Control.Concurrent.Async
 import qualified Control.Concurrent.Async.Lifted as AL
@@ -62,7 +61,7 @@ import Tach.Migration.Routes.Internal
 import Tach.Migration.Instances()
 
 -- Compression
-import qualified Codec.Compression.GZip as GZ
+-- import qualified Codec.Compression.GZip as GZ
 
 import Tach.Migration.Routes.Types
 import Tach.Migration.Foundation
@@ -71,26 +70,16 @@ import qualified Data.Serialize as SER
 import Data.Either
 
 -- Binary Transform
-import Data.BinaryList (BinList)
-import Data.BinaryList.Algorithm.BinaryTransform
 import qualified Data.BinaryList as BL
 
-import Data.Binary.Put
-import Data.Binary.Get
 import qualified Data.BinaryList.Serialize as BLS
-import Data.ReinterpretCast (doubleToWord,wordToDouble)
+import Format.BinaryStore
 
 mkYesodDispatch "MigrationRoutes" resourcesMigrationRoutes
 
 instance Yesod MigrationRoutes where --changing default methods for larger upload sizes
   maximumContentLength _ (Just (ReceiveTimeSeriesR _)) = Just $ 2 * 1024 * 1024 * 1024 -- 2 gigabytes for ReceiveTimeSeries
   maximumContentLength _  _ = Just $ 2  * 1024 * 1024 -- 2 mb 
-
-instance ToJSON a => ToJSON (SEQ.Seq a) where
-  toJSON = toJSON . toList
-
-instance ToJSON a => ToJSON (PeriodicData a) where
-instance ToJSON a => ToJSON (APeriodicData a) where
 
 tempS3Conn :: S3.S3Connection
 tempS3Conn = S3.S3Connection S3.defaultS3Host "" ""
@@ -392,9 +381,8 @@ uploadState master s3Conn state stKey fName key@(ImpulseKey dKey) {- period delt
   eSet <- query' state $ GetTVSimpleImpulseMany key start end
   res <- T.sequence $ (\set -> do
           let (_,vs) = normalizeSampling $ toList set
-              compressedSet = GZ.compress $ BLS.encode $ direct theMaybeTransform $ BL.fromListWithDefault Nothing vs
-              -- compressedSet = GZ.compress . encode $ fmap periodicToTransform . tvDataToEither <$> classifySet period delta minPeriodicSize set
-          r <- uploadToS3 s3Conn (migrationRoutesS3Bucket master) fName stKey compressedSet >>= return . Right
+              binaryStore = encode $ createBinaryStore BLS.FromLeft 1 2 True $ BL.fromListWithDefault Nothing vs
+          r <- uploadToS3 s3Conn (migrationRoutesS3Bucket master) fName stKey binaryStore >>= return . Right
           case r of
             Right (S3.S3Success _) -> do
               Prelude.putStrLn "Uploaded to S3"
@@ -436,7 +424,6 @@ data TimeSeriesQuery = TimeSeriesQuery {
     } deriving (Read, Show, Eq, Generic)
 
 instance FromJSON TimeSeriesQuery where
-instance ToJSON TimeSeriesQuery where
 
 postQueryTimeSeriesR :: Handler Value
 postQueryTimeSeriesR = do
@@ -495,47 +482,6 @@ attemptLookupInsert cell key tmMap = do
 classifySet :: Int -> Int -> Int -> S.Set TVNoKey -> SEQ.Seq (TVData TVNoKey)
 classifySet period delta minPeriodicSize = classifyData period delta minPeriodicSize tvNkSimpleTime . S.toList
 
----------------------------------------------------------------------------------------------------------------
----------------------------------------------------------------------------------------------------------------
--- Code related with the transform
-
-theBijection :: Bijection (Double,Double) (Double,Double)
-theBijection = Bijection f f'
-  where
-    f  (x,y) = ((x+y)/2,(y-x)/2)
-    f' (x,y) = (x-y,x+y)
-
-theTransform :: Bijection (BinList Double) (BinList Double)
-theTransform = leftBinaryTransform theBijection
-
-theMaybeTransform :: Bijection (BinList (Maybe Double)) (BinList (Maybe Double))
-theMaybeTransform = leftBinaryTransform $ Bijection f f'
-  where
-    f  (Just x, Just y) = Just *** Just $ direct  theBijection (x,y)
-    f  v = v
-    f' (Just x, Just y) = Just *** Just $ inverse theBijection (x,y)
-    f' v = v
-
--- Double values serialization
-
-putDouble :: Double -> Put
-putDouble = putWord64le . doubleToWord
-
-getDouble :: Get Double
-getDouble = wordToDouble <$> getWord64le
-
-putMaybeDouble :: Maybe Double -> Put
-putMaybeDouble Nothing  = putWord8 0
-putMaybeDouble (Just x) = putWord8 1 >> putDouble x
-
-getMaybeDouble :: Get (Maybe Double)
-getMaybeDouble = do
-  b <- getWord8
-  case b of
-    0 -> return Nothing
-    1 -> Just <$> getDouble
-    _ -> fail "getMaybeDouble: invalid encoding."
-
 -- Sample list normalization
 
 normalPeriod :: Int
@@ -573,10 +519,6 @@ normalizeSampling vs =
 maybeToEither :: String -> Maybe a -> Either String a
 maybeToEither s Nothing = Left s
 maybeToEither _ (Just o) = Right o
-
-resultEither :: ToJSON a => (a -> c) -> (String -> c) -> Result a -> c
-resultEither _ failure (Error s) = failure s
-resultEither success _ (Success a) = success a
 
 resultToEither :: Result a -> Either String a
 resultToEither (Error s) = Left . show $ s

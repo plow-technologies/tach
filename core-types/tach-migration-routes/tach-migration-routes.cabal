@@ -50,10 +50,8 @@ Library
                       , async >= 2.0.1.5
                       , lifted-async >= 0.2.0
                       , transformers >= 0.3.0.0
-                      , binary
                       , binary-list
-                      , binary-transform
-                      , reinterpret-cast
+                      , binary-store
 
 Test-Suite spec
   Type:                 exitcode-stdio-1.0
@@ -115,10 +113,8 @@ executable         migration-app
                       , async
                       , lifted-async
                       , transformers
-                      , binary
                       , binary-list
-                      , binary-transform
-                      , reinterpret-cast
+                      , binary-store
     ghc-options:       -threaded -O2 -rtsopts -Wall -fno-warn-orphans
 
 Source-Repository head
