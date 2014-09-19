@@ -69,10 +69,8 @@ import Tach.Migration.Foundation
 import qualified Data.Serialize as SER
 import Data.Either
 
--- Binary Transform
+-- Binary List and Store
 import qualified Data.BinaryList as BL
-
-import qualified Data.BinaryList.Serialize as BLS
 import Format.BinaryStore
 
 mkYesodDispatch "MigrationRoutes" resourcesMigrationRoutes
@@ -381,7 +379,7 @@ uploadState master s3Conn state stKey fName key@(ImpulseKey dKey) {- period delt
   eSet <- query' state $ GetTVSimpleImpulseMany key start end
   res <- T.sequence $ (\set -> do
           let (_,vs) = normalizeSampling $ toList set
-              binaryStore = encode $ fromRight $ createBinaryStore BLS.FromLeft 1 2 True $ BL.fromListWithDefault Nothing vs
+              binaryStore = encode $ createBinaryStoreDefault $ BL.fromListWithDefault Nothing vs
           r <- uploadToS3 s3Conn (migrationRoutesS3Bucket master) fName stKey binaryStore >>= return . Right
           case r of
             Right (S3.S3Success _) -> do
@@ -515,10 +513,6 @@ normalizeSampling vs =
 
 ---------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------
-
-fromRight :: Either a b -> b
-fromRight (Right x) = x
-fromRight _ = error "fromRight: Left value"
 
 maybeToEither :: String -> Maybe a -> Either String a
 maybeToEither s Nothing = Left s
