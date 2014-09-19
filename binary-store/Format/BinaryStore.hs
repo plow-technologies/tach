@@ -271,6 +271,8 @@ createBinaryStoreDefault :: BinaryStoreValue a => BinList a -> BinaryStore
 createBinaryStoreDefault = fromRight . createBinaryStore FromLeft 1 2 True
 
 -- | Create a binary store from a binary list, using some configurations.
+--   The denominator of the average constant must be greater or equal to
+--   its numerator and, of course, different from zero.
 createBinaryStore :: BinaryStoreValue a
                   => Direction -- ^ Direction of encoding
                   -> Word8     -- ^ Average constant numerator
