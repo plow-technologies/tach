@@ -230,13 +230,17 @@ createBinaryStore :: BinaryStoreValue a
                   -> BinList a -- ^ Input list
                   -> BinaryStore
 createBinaryStore dr n d c xs =
-  BinaryStore (modeValue $ BL.head xs) n d dr c (fromIntegral $ BL.lengthIndex xs) $
-    let p     = fromIntegral n / fromIntegral d
-        trans = (if dr == FromLeft
-                    then leftBinaryTransform
-                    else rightBinaryTransform) $ averageBijection p
-        comp  = if c then compress else id
-    in  comp $ BLS.encData $ BLS.encodeBinList putValue dr $ direct trans xs
+  if d == 0
+     then error "createBinaryStore: denominator is zero"
+     else if d < n
+             then error "createBinaryStore: denominator is smaller than numerator"
+             else BinaryStore (modeValue $ BL.head xs) n d dr c (fromIntegral $ BL.lengthIndex xs) $
+                    let p     = fromIntegral n / fromIntegral d
+                        trans = (if dr == FromLeft
+                                    then leftBinaryTransform
+                                    else rightBinaryTransform) $ averageBijection p
+                        comp  = if c then compress else id
+                    in  comp $ BLS.encData $ BLS.encodeBinList putValue dr $ direct trans xs
 
 readBinaryStore :: BinaryStoreValue a => BinaryStore -> Decoded a
 readBinaryStore bs =
