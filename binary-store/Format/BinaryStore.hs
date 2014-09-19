@@ -13,9 +13,8 @@
 --   via network connection.
 --
 module Format.BinaryStore (
-      -- * Types
+      -- * Binary Store Type
       BinaryStore
-    , Mode (..)
       -- * Encoding/Decoding
     , encode, decode
       -- * Creating and reading
@@ -26,6 +25,7 @@ module Format.BinaryStore (
     , BinaryStoreValue
       -- * Information
       -- | Some functions to get information about a binary store.
+    , Mode (..)
     , bsMode
     , bsNumerator
     , bsDenominator
