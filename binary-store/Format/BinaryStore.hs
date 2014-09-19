@@ -222,7 +222,7 @@ createBinaryStore dr n d c xs =
                     then leftBinaryTransform
                     else rightBinaryTransform) $ averageBijection p
         comp  = if c then compress else id
-    in  compress $ BLS.encData $ BLS.encodeBinList putValue dr $ direct trans xs
+    in  comp $ BLS.encData $ BLS.encodeBinList putValue dr $ direct trans xs
 
 readBinaryStore :: BinaryStoreValue a => BinaryStore -> Decoded a
 readBinaryStore bs =
