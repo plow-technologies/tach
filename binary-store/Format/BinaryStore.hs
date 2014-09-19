@@ -228,13 +228,13 @@ createBinaryStore :: BinaryStoreValue a
                   -> Word8     -- ^ Average constant denominator
                   -> Bool      -- ^ Whether to use zero compression or not
                   -> BinList a -- ^ Input list
-                  -> BinaryStore
+                  -> Either String BinaryStore
 createBinaryStore dr n d c xs =
   if d == 0
-     then error "createBinaryStore: denominator is zero"
+     then Left "denominator is zero"
      else if d < n
-             then error "createBinaryStore: denominator is smaller than numerator"
-             else BinaryStore (modeValue $ BL.head xs) n d dr c (fromIntegral $ BL.lengthIndex xs) $
+             then Left "denominator is smaller than numerator"
+             else Right $ BinaryStore (modeValue $ BL.head xs) n d dr c (fromIntegral $ BL.lengthIndex xs) $
                     let p     = fromIntegral n / fromIntegral d
                         trans = (if dr == FromLeft
                                     then leftBinaryTransform
