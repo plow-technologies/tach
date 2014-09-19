@@ -28,8 +28,9 @@ import qualified Data.ByteString as SB
 -- Binary
 import Data.Word (Word8)
 import Data.Binary (Binary (..))
-import Data.Binary.Put
-import Data.Binary.Get
+import Data.Binary.Put ( Put,runPut,putWord8,putWord64le
+                       , putByteString,putLazyByteString )
+import Data.Binary.Get (Get,runGetOrFail,getWord8,getWord64le)
 
 -- Casting from/to Double
 import Data.ReinterpretCast (doubleToWord,wordToDouble)
