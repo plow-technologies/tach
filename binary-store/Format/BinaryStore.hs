@@ -1,11 +1,31 @@
 
 -- | A /Binary Store/ is a data format that stores a sequence of values
---   encoded using the binary transform.
+--   encoded using the binary transform. Therefore, it use is restricted
+--   to binary lists, i.e. lists whose length is a power of two.
+--
+--   To create a binary store from a binary list use 'createBinaryStore'.
+--   This will create a 'BinaryStore' value that you can convert to a
+--   lazy 'ByteString' with 'encode'. To revert the process, use 'decode'
+--   and then 'readBinaryStore'. The whole process of decoding, from 'ByteString'
+--   to the final 'Decoded' value is done /lazily/. This allows the user to
+--   decode only a portion of the data without reading the full 'ByteString'.
+--   This is useful when reading big files or when the 'ByteString' is obtained
+--   via network connection.
+--
 module Format.BinaryStore (
       -- * Types
       BinaryStore
     , Mode (..)
+      -- * Encoding/Decoding
+    , encode, decode
+      -- * Creating and reading
+    , createBinaryStore
+    , createBinaryStoreDefault
+    , readBinaryStore
+      -- * Class of storable values
+    , BinaryStoreValue
       -- * Information
+      -- | Some functions to get information about a binary store.
     , bsMode
     , bsNumerator
     , bsDenominator
@@ -14,13 +34,6 @@ module Format.BinaryStore (
     , bsCompression
     , bsLength
     , bsData
-      -- * Encoding/Decoding
-    , encode, decode
-      -- * Creating and reading
-    , createBinaryStore
-    , readBinaryStore
-      -- * Class of storable values
-    , BinaryStoreValue
     ) where
 
 import Control.Applicative ((<$>))
@@ -53,12 +66,14 @@ import Data.BinaryList.Algorithm.BinaryTransform
 
 -- Utils
 
+-- | A custom error message for parsing errors in this module.
 failGet :: String -> Get a
 failGet str = fail $ "binary-store: " ++ str
 
 --------
 
--- | Binary Store mode.
+-- | Binary Store Mode. The Binary Store Mode indicates what
+--   kind of data a binary store contains.
 --
 -- * 'Plain': Each value is a 'Double'.
 --
@@ -66,10 +81,12 @@ failGet str = fail $ "binary-store: " ++ str
 --
 data Mode = Plain | WithHoles
 
+-- | Serialization of modes.
 putMode :: Mode -> Put
 putMode Plain = putWord8 0
 putMode WithHoles = putWord8 1
 
+-- | Deserialization of modes.
 getMode :: Get Mode
 getMode = do
   w <- getWord8
@@ -78,10 +95,12 @@ getMode = do
     1 -> return WithHoles
     _ -> failGet $ "unrecognized mode (" ++ show w ++ ")"
 
+-- | Serialization of directions.
 putDirection :: Direction -> Put
 putDirection FromLeft = putWord8 0
 putDirection FromRight = putWord8 1
 
+-- | Deserialization of directions.
 getDirection :: Get Direction
 getDirection = do
   w <- getWord8
@@ -93,18 +112,20 @@ getDirection = do
 -- | Binary Store is a format to store data encoded using
 --   the Average Binary Transform.
 data BinaryStore = BinaryStore {
-    bsMode        :: Mode       -- ^ Binary Store mode
-  , bsNumerator   :: Word8      -- ^ Numerator of the Average Constant
-  , bsDenominator :: Word8      -- ^ Denominator of the Average Constant
-  , bsDirection   :: Direction  -- ^ Direction of encoding
-  , bsCompression :: Bool       -- ^ Whether zero compression is used or not
-  , bsLength      :: Word8      -- ^ Length index of the data
-  , bsData        :: ByteString -- ^ Data (which might be compressed)
+    bsMode        :: Mode       -- ^ Binary Store mode.
+  , bsNumerator   :: Word8      -- ^ Numerator of the Average Constant.
+  , bsDenominator :: Word8      -- ^ Denominator of the Average Constant.
+  , bsDirection   :: Direction  -- ^ Direction of encoding.
+  , bsCompression :: Bool       -- ^ Whether zero compression is used or not.
+  , bsLength      :: Word8      -- ^ Length index of the data.
+  , bsData        :: ByteString -- ^ Data (which might be compressed).
   }
 
+-- | The constant used by the Average Binary Transform.
 averageConstant :: BinaryStore -> Double
 averageConstant bs = fromIntegral (bsNumerator bs) / fromIntegral (bsDenominator bs)
 
+-- | Encode a binary store as a lazy 'ByteString'.
 encode :: BinaryStore -> ByteString
 encode bs = runPut $ do
   putMode $ bsMode bs
@@ -115,11 +136,16 @@ encode bs = runPut $ do
   putWord8 $ bsLength bs
   putLazyByteString $ bsData bs
 
+-- | Decode a lazy 'ByteString' as a binary store. The header of the
+--   binary store is read strictly, while the body evaluation is delayed.
+--   It returns a 'String' if the header is malformed. The 'String' contains
+--   an error description.
 decode :: ByteString -> Either String BinaryStore
 decode bs = case runGetOrFail getHeader bs of
   Left (_,off,err) -> Left $ err ++ ", after " ++ show off ++ " bytes"
   Right (b,_,(m,n,d,dr,c,l)) -> Right $ BinaryStore m n d dr c l b
 
+-- | Binary Store Header parser.
 getHeader :: Get (Mode,Word8,Word8,Direction,Bool,Word8)
 getHeader = do
   m <- getMode
@@ -147,6 +173,7 @@ byte is alone, then the compression will be 1 byte to 2 bytes.
 
 -}
 
+-- | Stream zero compression.
 putCompressed :: ByteString -> Put
 putCompressed = go 0 . B.unpack
   where
@@ -170,9 +197,11 @@ putCompressed = go 0 . B.unpack
         _ -> do putWord8 0
                 putWord8 z
 
+-- | Zero compression of lazy 'ByteString'.
 compress :: ByteString -> ByteString
 compress = runPut . putCompressed
 
+-- | Zero decompression of lazy 'ByteString.
 decompress :: ByteString -> ByteString
 decompress = runPut . go False . B.unpack
   where
@@ -188,6 +217,8 @@ decompress = runPut . go False . B.unpack
 ----------------------------------
 -- Conversion from/to binary lists
 
+-- | This is the class of values that can be stored in a 'BinaryStore'.
+--   This is a closed class, so the user is not allowed to add new instances.
 class BinaryStoreValue a where
   putValue :: a -> Put
   getValue :: Get a
@@ -222,6 +253,24 @@ instance BinaryStoreValue a => BinaryStoreValue (Maybe a) where
       f' (Just x, Just y) = Just *** Just $ inverse (averageBijection p) (x,y)
       f' v = v
 
+{-# INLINE fromRight #-}
+
+-- | Deconstructor of 'Right'. Throws an error when given a 'Left' value.
+fromRight :: Either a b -> b
+fromRight e =
+  case e of
+    Right x -> x
+    _ -> error "fromRight: Left value"
+
+{-# INLINE createBinaryStoreDefault #-}
+
+-- | Create a binary store from a binary list, using 'createBinaryStore' with default arguments.
+--   In spite of seeming partial (since 'createBinaryStore' returns an 'Either' value), this
+--   function is total.
+createBinaryStoreDefault :: BinaryStoreValue a => BinList a -> BinaryStore
+createBinaryStoreDefault = fromRight . createBinaryStore FromLeft 1 2 True
+
+-- | Create a binary store from a binary list, using some configurations.
 createBinaryStore :: BinaryStoreValue a
                   => Direction -- ^ Direction of encoding
                   -> Word8     -- ^ Average constant numerator
@@ -242,6 +291,9 @@ createBinaryStore dr n d c xs =
                         comp  = if c then compress else id
                     in  comp $ BLS.encData $ BLS.encodeBinList putValue dr $ direct trans xs
 
+-- | Read a binary store and build a 'Decoded' value. The 'Decoded' value is a list of partial results of
+--   increasing size (1, 2, 4, 8, etc) that ends in either a decoding error or a final result. These partial
+--   results are generated lazily from the binary store data.
 readBinaryStore :: BinaryStoreValue a => BinaryStore -> Decoded a
 readBinaryStore bs =
   let decomp  = if bsCompression bs then decompress else id
