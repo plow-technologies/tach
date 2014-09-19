@@ -1,4 +1,6 @@
 
+-- | A /Binary Store/ is a data format that stores a sequence of values
+--   encoded using the binary transform.
 module Format.BinaryStore (
       BinaryStore (..)
     , Mode (..)
@@ -25,7 +27,6 @@ import qualified Data.ByteString as SB
 
 -- Binary
 import Data.Word (Word8)
-import Data.Int (Int64)
 import Data.Binary (Binary (..))
 import Data.Binary.Put
 import Data.Binary.Get
@@ -98,17 +99,13 @@ encode bs = runPut $ do
   putLazyByteString $ bsData bs
 
 decode :: ByteString -> Either String BinaryStore
-decode b = case runGetOrFail getHeader b of
+decode bs = case runGetOrFail getHeader bs of
   Left (_,off,err) -> Left $ err ++ ", after " ++ show off ++ " bytes"
   Right (b,_,(m,n,d,dr,c,l)) -> Right $ BinaryStore m n d dr c l b
 
 getHeader :: Get (Mode,Word8,Word8,Direction,Bool,Word8)
 getHeader = do
   m <- getMode
-  let valueSize =
-        case m of
-          Plain -> 4
-          WithHoles -> 5
   n <- getWord8
   d <- getWord8
   when (d == 0) $ failGet "denominator is zero"
