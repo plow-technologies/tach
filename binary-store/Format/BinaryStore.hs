@@ -201,7 +201,7 @@ putCompressed = go 0 . B.unpack
 compress :: ByteString -> ByteString
 compress = runPut . putCompressed
 
--- | Zero decompression of lazy 'ByteString.
+-- | Zero decompression of lazy 'ByteString'.
 decompress :: ByteString -> ByteString
 decompress = runPut . go False . B.unpack
   where
