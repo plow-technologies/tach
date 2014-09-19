@@ -2,12 +2,25 @@
 -- | A /Binary Store/ is a data format that stores a sequence of values
 --   encoded using the binary transform.
 module Format.BinaryStore (
-      BinaryStore (..)
+      -- * Types
+      BinaryStore
     , Mode (..)
+      -- * Information
+    , bsMode
+    , bsNumerator
+    , bsDenominator
+    , averageConstant
+    , bsDirection
+    , bsCompression
+    , bsLength
+    , bsData
+      -- * Encoding/Decoding
     , encode, decode
-    , BinaryStoreValue
+      -- * Creating and reading
     , createBinaryStore
     , readBinaryStore
+      -- * Class of storable values
+    , BinaryStoreValue
     ) where
 
 import Control.Applicative ((<$>))
@@ -88,6 +101,9 @@ data BinaryStore = BinaryStore {
   , bsLength      :: Word8      -- ^ Length index of the data
   , bsData        :: ByteString -- ^ Data (which might be compressed)
   }
+
+averageConstant :: BinaryStore -> Double
+averageConstant bs = fromIntegral (bsNumerator bs) / fromIntegral (bsDenominator bs)
 
 encode :: BinaryStore -> ByteString
 encode bs = runPut $ do
@@ -226,7 +242,7 @@ readBinaryStore :: BinaryStoreValue a => BinaryStore -> Decoded a
 readBinaryStore bs =
   let decomp  = if bsCompression bs then decompress else id
       encd    = BLS.EncodedBinList (bsDirection bs) (fromIntegral $ bsLength bs) $ decomp $ bsData bs
-      p       = fromIntegral (bsNumerator bs) / fromIntegral (bsDenominator bs)
+      p       = averageConstant bs
       detrans = (if bsDirection bs == FromLeft
                     then leftInverseBinaryTransformDec
                     else rightInverseBinaryTransformDec) $ averageBijection p
