@@ -28,6 +28,7 @@ import Text.LaTeX.Packages.AMSMath (math)
 import qualified Data.ByteString.Lazy as B
 import Codec.Compression.BZip (compress)
 import Data.Int (Int64)
+import Control.Monad (replicateM)
 
 instance Texy Int64 where
   texy = texy . (fromIntegral :: Int64 -> Int)
@@ -56,18 +57,28 @@ experimentRow li a b = do
   xs <- randomValues li a b
   let bszc = createBinaryStoreDefault xs
       Right bs = createBinaryStore FromLeft 1 2 False xs
+      ebszc = encode bszc
+      lebszc = B.length ebszc
+      cebszc = compress ebszc
+      lcebszc = B.length cebszc
+      ebs = encode bs
+      lebs = B.length ebs
+      cebs = compress ebs
+      lcebs = B.length cebs
+      m = minimum [lebszc, lcebszc, lebs, lcebs]
+      texyI l = (if l == m then textbf else id) (texy l)
       row = -- Length of the list
             texy (BL.length xs)
             -- Density of values
           & math (texy a / texy b)
             -- Size of binary store
-          & texy (B.length $ encode bs)
+          & texyI lebs
             -- Size of compressed binary store
-          & texy (B.length $ compress $ encode bs)
+          & texyI lcebs
             -- Size of binary store (ZC)
-          & texy (B.length $ encode bszc)
+          & texyI lebszc
             -- Size of compressed binary store (ZC)
-          & texy (B.length $ compress $ encode bszc)
+          & texyI lcebszc
   return $ row <> lnbk
 
 experimentTable :: IO LaTeX
@@ -102,6 +113,7 @@ experimentTable = do
           , experimentRow 20 2 4
           , experimentRow 20 3 4
           , experimentRow 20 4 4
+
             ]
   let spec = replicate 6 CenterColumn
   return $ tabular Nothing spec $
@@ -123,7 +135,7 @@ custom Zero Compression method. The last column shows the size of combining both
 the Zero Compression first. Apparently, with large enough inputs, the combination of bzip and ZC suits
 better when the density is less than $\frac{1}{4}$, and bzip alone works better when the density is greater
 than $\frac{1}{2}$. More fine grained tests should be performed using densities within an interval
-where most real world cases have their density. All sizes are given in bytes.
+where most real world cases have their density. All sizes are given in bytes. Smallest sizes are highlighted.
 
 \newpage
 
@@ -131,5 +143,29 @@ where most real world cases have their density. All sizes are given in bytes.
 \begin{center}
 \iohatex{experimentTable}
 \end{center}
+
+\newpage
+
+\begin{writehaskell}
+
+experimentSize :: Int
+experimentSize = 20
+
+experimentNum :: Int
+experimentNum = 1
+
+experimentDen :: Int
+experimentDen = 15
+
+\end{writehaskell}
+
+The next table shows repeated experiments with length \hatex{texy $ (2 :: Int)^experimentSize} and density
+$\frac{\hatex{texy experimentNum}}{\hatex{texy experimentDen}}$.
+
+\begin{tabular}{cccccc}
+Length & Density & BS Size & BS Size (bzip) & BS Size (ZC) & BS Size (bzip,ZC) \\
+\hline
+\iohatex{fmap mconcat $ replicateM 10 $ experimentRow experimentSize experimentNum experimentDen}
+\end{tabular}
 
 \end{document}
