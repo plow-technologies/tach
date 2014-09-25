@@ -25,7 +25,6 @@ import qualified Data.ByteString.UTF8 as UTF
 import qualified Data.ByteString.Lazy as L
 import qualified Network.AWS.S3Simple as S3
 import qualified Network.AWS.S3SimpleTypes as S3
-import qualified Data.Sequence as SEQ
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Filesystem as FS
@@ -46,7 +45,7 @@ import Tach.Impulse.Types.Impulse
 import Tach.Impulse.Types.TimeValue
 import Tach.Impulse.Types.TimeValueSeries
 import Tach.Migration.Acidic.Types
-import Tach.Periodic
+-- import Tach.Periodic
 import Tach.Migration.Types
 import Control.Monad.IO.Class
 -- Yesod and web related
@@ -477,8 +476,8 @@ attemptLookupInsert cell key tmMap = do
       E.finally (createArchive st) (createCheckpoint st)
       return st
 
-classifySet :: Int -> Int -> Int -> S.Set TVNoKey -> SEQ.Seq (TVData TVNoKey)
-classifySet period delta minPeriodicSize = classifyData period delta minPeriodicSize tvNkSimpleTime . S.toList
+-- classifySet :: Int -> Int -> Int -> S.Set TVNoKey -> SEQ.Seq (TVData TVNoKey)
+-- classifySet period delta minPeriodicSize = classifyData period delta minPeriodicSize tvNkSimpleTime . S.toList
 
 -- Sample list normalization
 
