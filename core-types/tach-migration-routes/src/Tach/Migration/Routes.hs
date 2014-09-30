@@ -264,8 +264,11 @@ postReceiveTimeSeriesR size = do
   liftIO $ Prelude.putStrLn "Traversing"
   res <- T.sequence $ T.traverse
                           (\smallList -> do                                                                      --T.traverse (\l -> do
+                              -- Every 'updateMigrationTransports' is executed in a separate thread
                               asList <- T.traverse (AL.async . updateMigrationTransports master acidCell) smallList
                               -- Control.Monad.mapM_ (updateMigrationTransports master acidCell)) l (groupBy 16 list)) <$> eTsInfo -- Update each result that was received
+                              -- Then we wait for all the threads to end and catch any exception of any
+                              -- thread by returning a @Left SomeException@ value.
                               T.traverse AL.waitCatch asList
                             ) . groupUp 16
                          <$> eTsInfo
@@ -275,7 +278,7 @@ postReceiveTimeSeriesR size = do
     Right rList -> do
       if ((Prelude.length . lefts . Prelude.concat $ rList) > 0)
         then do
-          liftIO $ Prelude.putStrLn "Error. Some failed---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------===================================================================="
+          liftIO $ Prelude.putStrLn "[tach-migration-routes] postReceiveTimeSeriesR: at least a thread returned a exception."
           sendResponseStatus status501 $ toJSON ("Error!" :: String)
         else liftIO $ Prelude.putStrLn "Success. 0 failures."
       sendResponseStatus status201 $ toJSON size
