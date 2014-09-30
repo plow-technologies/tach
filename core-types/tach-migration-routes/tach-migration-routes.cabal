@@ -38,7 +38,6 @@ Library
                       , stm >= 2.4.3
                       , utf8-string >= 0.3.7
                       , s3-simple >= 0.2.0
-                      , zlib >= 0.5.4.1
                       , tach-transformable-types
                       , yaml
                       , tach-migration-types
@@ -96,7 +95,6 @@ executable         migration-app
                       , stm
                       , utf8-string
                       , s3-simple
-                      , zlib
                       , tach-transformable-types
                       , yaml
                       , tach-migration-types
