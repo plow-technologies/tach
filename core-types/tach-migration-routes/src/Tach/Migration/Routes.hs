@@ -159,6 +159,8 @@ getKillNodeR = do
   -- _ <- liftIO $ mapM closeAcidState migrationElems
   -- directories <- liftIO $ mapM (ST.getDirectory . elemToPath) migrationKeys
   -- _ <- liftIO $ mapM ST.remove directories
+
+  -- Why is this operation done four times? (Also: replicateM exists)
   void . liftIO $ tryPutMVar (migrationRoutesWait master) 0
   void . liftIO $ tryPutMVar (migrationRoutesWait master) 0
   void . liftIO $ tryPutMVar (migrationRoutesWait master) 0
