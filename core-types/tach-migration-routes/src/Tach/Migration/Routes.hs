@@ -160,7 +160,7 @@ getKillNodeR = do
   -- directories <- liftIO $ mapM (ST.getDirectory . elemToPath) migrationKeys
   -- _ <- liftIO $ mapM ST.remove directories
 
-  -- Why is this operation done four times? (Also: replicateM exists)
+  -- Why is this operation done four times? (Also: replicateM_ exists)
   void . liftIO $ tryPutMVar (migrationRoutesWait master) 0
   void . liftIO $ tryPutMVar (migrationRoutesWait master) 0
   void . liftIO $ tryPutMVar (migrationRoutesWait master) 0
