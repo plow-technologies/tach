@@ -278,7 +278,7 @@ postReceiveTimeSeriesR size = do
     Right rList -> do
       if ((Prelude.length . lefts . Prelude.concat $ rList) > 0)
         then do
-          liftIO $ Prelude.putStrLn "[tach-migration-routes] postReceiveTimeSeriesR: at least a thread returned a exception."
+          liftIO $ Prelude.putStrLn "[tach-migration-routes] postReceiveTimeSeriesR: at least one thread returned a exception."
           sendResponseStatus status501 $ toJSON ("Error!" :: String)
         else liftIO $ Prelude.putStrLn "Success. 0 failures."
       sendResponseStatus status201 $ toJSON size
