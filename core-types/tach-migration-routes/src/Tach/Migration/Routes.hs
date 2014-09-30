@@ -59,9 +59,6 @@ import qualified DirectedKeys.Types as DK
 import Tach.Migration.Routes.Internal
 import Tach.Migration.Instances()
 
--- Compression
--- import qualified Codec.Compression.GZip as GZ
-
 import Tach.Migration.Routes.Types
 import Tach.Migration.Foundation
 
