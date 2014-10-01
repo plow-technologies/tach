@@ -276,9 +276,15 @@ postReceiveTimeSeriesR size = do
   case res of
     Left _ -> sendResponseStatus status501 $ toJSON ("Error!" :: String)
     Right rList -> do
-      if ((Prelude.length . lefts . Prelude.concat $ rList) > 0)
+      let errs = lefts $ Prelude.concat rList
+      if Prelude.notNull errs
         then do
-          liftIO $ Prelude.putStrLn "[tach-migration-routes] postReceiveTimeSeriesR: at least one thread returned a exception."
+          liftIO $ do
+             Prelude.putStrLn "[tach-migration-routes] postReceiveTimeSeriesR: at least one thread returned a exception."
+             Prelude.putStrLn "    Exceptions were:"
+             mapM_ (\err -> Prelude.putStrLn
+                            $ "    ** " ++ err) errs
+             Prelude.putStrLn "    Sending 501 Status response."
           sendResponseStatus status501 $ toJSON ("Error!" :: String)
         else liftIO $ Prelude.putStrLn "Success. 0 failures."
       sendResponseStatus status201 $ toJSON size
