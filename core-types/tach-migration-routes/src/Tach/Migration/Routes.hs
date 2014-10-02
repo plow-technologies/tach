@@ -1,7 +1,8 @@
 
-{-# LANGUAGE QuasiQuotes, TemplateHaskell, RecordWildCards, DeriveGeneric, OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes, TemplateHaskell, RecordWildCards, DeriveGeneric, OverloadedStrings, ViewPatterns #-}
 
-module Tach.Migration.Routes where
+-- | 'YesodDispatch' instance of 'MigrationRoutes' type.
+module Tach.Migration.Routes () where
 
 -- General Haskell imports
 import qualified Control.Exception as E
@@ -39,11 +40,9 @@ import qualified Data.Set as S
 import qualified Data.Map as M
 
 -- External Tach imports
-import Tach.Acid.Impulse.State
 import Tach.Acid.Impulse.Cruds
 import Tach.Impulse.Types.Impulse
 import Tach.Impulse.Types.TimeValue
-import Tach.Impulse.Types.TimeValueSeries
 import Tach.Migration.Acidic.Types
 -- import Tach.Periodic
 import Tach.Migration.Types
@@ -75,29 +74,7 @@ instance Yesod MigrationRoutes where --changing default methods for larger uploa
   maximumContentLength _ (Just (ReceiveTimeSeriesR _)) = Just $ 2 * 1024 * 1024 * 1024 -- 2 gigabytes for ReceiveTimeSeries
   maximumContentLength _  _ = Just $ 2  * 1024 * 1024 -- 2 mb 
 
-tempS3Conn :: S3.S3Connection
-tempS3Conn = S3.S3Connection S3.defaultS3Host "" ""
-
 type MigrationTransportTV = MigrationTransport Text TVNoKey
-
-listTest :: IO (S.Set TVNoKey)
-listTest = do
-  impulseState <- openLocalStateFrom "teststate" emptyStore
-  eRes <- query' impulseState $
-            GetTVSimpleImpulseMany
-            (buildTestImpulseKey $ DK.DKeyRaw (KeyPid 299) (KeySource "") (KeyDestination "") (KeyTime 0))
-            (ImpulseStart (-4879536533031178240))
-            (ImpulseEnd 5364650883968821760)
-  closeAcidState impulseState
-  case eRes of
-    Left _ -> return S.empty
-    Right res -> return res
-
-buildIncomingKey :: KeyPid -> KeySource -> KeyDestination -> KeyTime -> IncomingKey
-buildIncomingKey = DK.DKeyRaw
-
-emptyStore :: TVSimpleImpulseTypeStore
-emptyStore = buildTestImpulseTypeStore (DK.DKeyRaw (KeyPid 299) (KeySource "") (KeyDestination "") (KeyTime 0)) 0 0 [] [] 
 
 getHomeR :: Handler Html
 getHomeR = defaultLayout [whamlet|Simple API|]
@@ -118,11 +95,12 @@ getListDataR stKey = do
     Right (Left e) -> return . toJSON . show $ e
     Right (Right res) -> return . toJSON $ res
 
-data KeyPidSize = KeyPidSize {
-  kpsKey :: T.Text
- ,kpsPid :: Int
- ,kpsSize :: Int
-} deriving (Read, Show, Generic)
+data KeyPidSize =
+  KeyPidSize
+     T.Text -- Key
+     Int -- Pid
+     Int -- Size
+       deriving (Read, Show, Generic)
 
 instance ToJSON KeyPidSize where
 
@@ -137,12 +115,8 @@ getListKeySortedR = do
   return . toJSON . catMaybes $ snd <$> M.toList res
   
 eitherToMaybe :: Either a b -> Maybe b
-eitherToMaybe (Left _) = Nothing
 eitherToMaybe (Right b) = Just b
-
-showLeft :: (Show a) => Either a b -> Either String b
-showLeft (Left s) = Left . show $ s
-showLeft (Right x) = Right x
+eitherToMaybe _ = Nothing
 
 -- | Kills a node gracefully by closing the acid state
 getKillNodeR :: Handler Value
@@ -263,10 +237,9 @@ postReceiveTimeSeriesR size = do
   let acidCell = migrationRoutesAcidCell master
   liftIO $ Prelude.putStrLn "Traversing"
   res <- T.sequence $ T.traverse
-                          (\smallList -> do                                                                      --T.traverse (\l -> do
+                          (\smallList -> do
                               -- Every 'updateMigrationTransports' is executed in a separate thread
                               asList <- T.traverse (AL.async . updateMigrationTransports master acidCell) smallList
-                              -- Control.Monad.mapM_ (updateMigrationTransports master acidCell)) l (groupBy 16 list)) <$> eTsInfo -- Update each result that was received
                               -- Then we wait for all the threads to end and catch any exception of any
                               -- thread by returning a @Left SomeException@ value.
                               T.traverse AL.waitCatch asList
@@ -277,13 +250,13 @@ postReceiveTimeSeriesR size = do
     Left _ -> sendResponseStatus status501 $ toJSON ("Error!" :: String)
     Right rList -> do
       let errs = lefts $ Prelude.concat rList
-      if Prelude.notNull errs
+      if not $ Prelude.null errs
         then do
           liftIO $ do
              Prelude.putStrLn "[tach-migration-routes] postReceiveTimeSeriesR: at least one thread returned a exception."
              Prelude.putStrLn "    Exceptions were:"
-             mapM_ (\err -> Prelude.putStrLn
-                            $ "    ** " ++ err) errs
+             Control.Monad.mapM_ (\err -> Prelude.putStrLn
+                            $ "    ** " ++ show err) errs
              Prelude.putStrLn "    Sending 501 Status response."
           sendResponseStatus status501 $ toJSON ("Error!" :: String)
         else liftIO $ Prelude.putStrLn "Success. 0 failures."
@@ -306,14 +279,14 @@ saveAndUploadState :: MonadHandler m =>
                             -> AcidState (EventState GetTVSimpleImpulseSize)
                             -> DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime
                             -> [TVNoKey]
-                            -> m (Either () ())
+                            -> m Bool
 saveAndUploadState master stKey state dKey tvNkList = do
   let destination = migrationRoutesDestination master
   if destination == (UTF.toString . unKeyDestination . DK.getDest) dKey
     then handleInsert master stKey state (ImpulseKey dKey) tvNkList --If the destination is the same as the destination for the current host
     else do
       _ <- sendResponseStatus status501 $ toJSON incorrectDestination
-      return . Left $ ()
+      return False
       where incorrectDestination :: String
             incorrectDestination = "Incorrect destination"
 
@@ -324,7 +297,7 @@ handleInsert :: (MonadIO m, Functor m) =>
                       -> ImpulseKey
                            (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime)
                       -> [TVNoKey]
-                      -> m (Either () ())
+                      -> m Bool
 handleInsert master stKey state key tvSet = do
   ePreSetSize <- query' state $ GetTVSimpleImpulseSize key
   void $ update' state $ InsertManyTVSimpleImpulse key $ S.fromList tvSet -- insert the list into the set
@@ -333,8 +306,8 @@ handleInsert master stKey state key tvSet = do
   eBounds <- query' state $ GetTVSimpleImpulseTimeBounds key
   res <- T.sequence $ checkAndUpload master state stKey key <$> eSetSize <*> eBounds
   return $ case res of
-    Left  _ -> Left  ()
-    Right _ -> Right ()
+    Left _ -> False
+    _ -> True
 
 -- | Used only after insert. Checks the two sizes and if they are equal it creates a checkpoint and archives it
 -- hopefully it cuts down on the size of archives
@@ -402,8 +375,8 @@ uploadState master s3Conn state stKey fName key@(ImpulseKey dKey) {- period delt
                 putTMVar (stateMap master) $ M.insert dKey Idle tsMap
               return Nothing) <$> eitherToMaybe eSet
   return $ case res of
-    Just _ -> Right ()
     Nothing -> Left "Error uploading state"
+    _ -> Right ()
   where removeState k s = do
           deleteResult <- update' state $ DeleteManyTVSimpleImpulse k s
           -- liftIO $ createCheckpoint state
@@ -411,7 +384,7 @@ uploadState master s3Conn state stKey fName key@(ImpulseKey dKey) {- period delt
           case deleteResult of
             Left _ -> do
               removeState k s
-            Right _ -> do
+            _ -> do
               Prelude.putStrLn "Deleted set from state"
               return . Right $ ()
 
@@ -420,18 +393,20 @@ uploadToS3 s3Conn bucket filename path contents =
   S3.uploadObject s3Conn (S3.S3Bucket bucket "" S3.US) $
      S3.S3Object filename (L.toStrict contents) bucket path "text/plain"
 
-data TimeSeriesQuery = TimeSeriesQuery {
-    tsqKey    :: String
-  , tsqStart  :: Int
-  , tsqEnd    :: Int
-  , tsqPeriod :: Int
-  , tsqDelta  :: Int
-    } deriving (Read, Show, Eq, Generic)
+data TimeSeriesQuery =
+  TimeSeriesQuery
+    String -- Key
+    Int    -- Start
+    Int    -- End
+    Int    -- Period
+    Int    -- Delta
+      deriving (Read, Show, Eq, Generic)
 
 instance FromJSON TimeSeriesQuery where
 
 postQueryTimeSeriesR :: Handler Value
 postQueryTimeSeriesR = do
+  liftIO $ Prelude.putStrLn "[postQueryTimeSeriesR] started."
   eQuery <- resultToEither <$> parseJsonBody :: Handler (Either String TimeSeriesQuery) -- Get the post body
   case eQuery of
     Left err -> sendResponseStatus status501 $ toJSON err
@@ -484,9 +459,6 @@ attemptLookupInsert cell key tmMap = do
       E.finally (createArchive st) (createCheckpoint st)
       return st
 
--- classifySet :: Int -> Int -> Int -> S.Set TVNoKey -> SEQ.Seq (TVData TVNoKey)
--- classifySet period delta minPeriodicSize = classifyData period delta minPeriodicSize tvNkSimpleTime . S.toList
-
 -- Sample list normalization
 
 normalPeriod :: Int
@@ -521,49 +493,7 @@ normalizeSampling vs =
 ---------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------
 
-maybeToEither :: String -> Maybe a -> Either String a
-maybeToEither s Nothing = Left s
-maybeToEither _ (Just o) = Right o
-
 resultToEither :: Result a -> Either String a
 resultToEither (Error s) = Left . show $ s
 resultToEither (Success s) = Right s
-
--- TEST STUFF
-
-buildTestImpulseRep :: [Int] -> [Double] -> ImpulseRep (S.Set TVNoKey)
-buildTestImpulseRep is ds = ImpulseRep . S.fromList $ Prelude.zipWith bldFcn is ds 
-    where 
-      bldFcn i d = TVNoKey i d
-
--- | Specialized version of 'ImpulseKey'.
-buildTestImpulseKey :: DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime -> TVKey
-buildTestImpulseKey = ImpulseKey 
-
--- | Specialized version of 'ImpulseStart'.
-buildTestImpulseStart :: Int -> TVSStart
-buildTestImpulseStart = ImpulseStart
-
--- | Specialized version of 'ImpulseEnd'.
-buildTestImpulseEnd :: Int -> TVSEnd
-buildTestImpulseEnd = ImpulseEnd
-
--- | This field is left blank because no period information has been calculated yet so it should stay blank
-buildTestImpulsePeriod :: TVPeriod
-buildTestImpulsePeriod = initialImpulsePeriod
-
-buildTestImpulseSeries :: DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime -> Int -> Int -> [Int] -> [Double] 
-                       -> ImpulseSeries TVKey TVPeriod TVSStart TVSEnd (ImpulseRep (S.Set TVNoKey))
-buildTestImpulseSeries key start end is ds = ImpulseSeries                                 
-                                             (buildTestImpulseKey key )                    
-                                             (buildTestImpulsePeriod)
-                                             (buildTestImpulseStart start)
-                                             (buildTestImpulseEnd end )
-                                             (buildTestImpulseRep is ds)
-
-buildTestImpulseTypeStore :: (DK.DirectedKeyRaw KeyPid KeySource KeyDestination KeyTime) -> Int -> Int -> [Int] -> [Double] 
-                          -> TVSimpleImpulseTypeStore 
-buildTestImpulseTypeStore key start end is ds = TVSimpleImpulseTypeStore 
-                                                (buildTestImpulseSeries key start end is ds)
-
 

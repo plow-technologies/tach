@@ -1,4 +1,8 @@
-{-# LANGUAGE QuasiQuotes, TemplateHaskell, TypeFamilies, RecordWildCards, OverloadedStrings, DeriveGeneric, GeneralizedNewtypeDeriving #-}
+
+{-# LANGUAGE QuasiQuotes, TemplateHaskell, TypeFamilies, RecordWildCards,
+             OverloadedStrings, DeriveGeneric, GeneralizedNewtypeDeriving,
+             ViewPatterns #-}
+
 module Tach.Migration.Routes.Types where
 
 --General Haskell imports
