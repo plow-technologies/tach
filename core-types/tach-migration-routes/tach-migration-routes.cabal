@@ -13,7 +13,7 @@ extra-source-files:     src/migration-routes
 Library
   Default-Language:     Haskell2010
   HS-Source-Dirs:       src
-  GHC-Options:          -Wall -fno-warn-orphans
+  GHC-Options:          -O2 -Wall -fno-warn-orphans
   Exposed-Modules:
                         Tach.Migration.Routes
                       , Tach.Migration.Instances
@@ -29,7 +29,6 @@ Library
                       , text       >= 0.11.3.1
                       , bytestring >= 0.10.0.2
                       , http-types
-                      , acid-state >= 0.12.2.1
                       , tach-migration-acidic
                       , containers
                       , vector
@@ -38,10 +37,9 @@ Library
                       , stm >= 2.4.3
                       , utf8-string >= 0.3.7
                       , s3-simple >= 0.2.0
-                      , tach-transformable-types
-                      , yaml
                       , tach-migration-types
                       , acid-cell
+                      , acid-state >= 0.12.2.1
                       , safecopy
                       , system-fileio >= 0.3.14
                       , system-filepath >= 0.4.12
