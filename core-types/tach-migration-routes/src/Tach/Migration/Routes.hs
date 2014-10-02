@@ -304,6 +304,7 @@ handleInsert master stKey state key tvSet = do
   eSetSize <- query' state $ GetTVSimpleImpulseSize key                   -- get the set size and bounds
   void . liftIO . T.sequence $ checkCreateCheckpoint state <$> ePreSetSize <*> eSetSize
   eBounds <- query' state $ GetTVSimpleImpulseTimeBounds key
+  -- Check and upload state
   res <- T.sequence $ checkAndUpload master state stKey key <$> eSetSize <*> eBounds
   return $ case res of
     Left _ -> False
